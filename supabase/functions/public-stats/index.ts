@@ -39,12 +39,14 @@ Deno.serve(async (req) => {
       .from('wallets')
       .select('*', { count: 'exact', head: true });
 
-    // 2. Total registered LANA = sum of all registered_lana_events.amount
-    const regEvents = await fetchAllPaginated<{ amount: number; detected_at: string }>(
-      (from, to) =>
-        supabase.from('registered_lana_events').select('amount, detected_at').range(from, to),
-    );
-    const totalRegisteredLana = regEvents.reduce((s, e) => s + Number(e.amount || 0), 0);
+    // 2. Total registered LANA = latest balance snapshot (matches Balance history tab)
+    const { data: latestSnapshot } = await supabase
+      .from('balance_snapshots')
+      .select('total_balance_lana')
+      .order('recorded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const totalRegisteredLana = Number(latestSnapshot?.total_balance_lana || 0);
 
     // 3. Transactions per day for last 30 days
     const since = new Date();
