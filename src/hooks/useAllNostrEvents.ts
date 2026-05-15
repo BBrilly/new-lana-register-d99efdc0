@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react';
 import { SimplePool, Event, Filter } from 'nostr-tools';
 import { getStoredParameters, getStoredRelayStatuses } from '@/utils/nostrClient';
 
+// Collect all trusted signer pubkeys from KIND 38888 system parameters.
+// Only events authored by one of these pubkeys are surfaced in the UI.
+const getTrustedPubkeys = (): Set<string> => {
+  const params = getStoredParameters();
+  const signers = params?.trusted_signers || {};
+  const all = new Set<string>();
+  for (const list of Object.values(signers)) {
+    if (Array.isArray(list)) {
+      for (const pk of list) if (typeof pk === 'string' && pk) all.add(pk.toLowerCase());
+    }
+  }
+  return all;
+};
+
 export interface Kind87003Event {
   id: string;
   walletId: string;
