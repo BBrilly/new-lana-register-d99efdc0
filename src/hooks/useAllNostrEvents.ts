@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react';
 import { SimplePool, Event, Filter } from 'nostr-tools';
 import { getStoredParameters, getStoredRelayStatuses } from '@/utils/nostrClient';
 
+// Collect all trusted signer pubkeys from KIND 38888 system parameters.
+// Only events authored by one of these pubkeys are surfaced in the UI.
+const getTrustedPubkeys = (): Set<string> => {
+  const params = getStoredParameters();
+  const signers = params?.trusted_signers || {};
+  const all = new Set<string>();
+  for (const list of Object.values(signers)) {
+    if (Array.isArray(list)) {
+      for (const pk of list) if (typeof pk === 'string' && pk) all.add(pk.toLowerCase());
+    }
+  }
+  return all;
+};
+
 export interface Kind87003Event {
   id: string;
   walletId: string;
@@ -76,13 +90,27 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
   
   console.log(`📥 [AllNostrEvents] Fetched ${fetched87003.length} Kind 87003 events and ${fetched87009.length} Kind 87009 events`);
 
+  // Filter to trusted signers from KIND 38888 only.
+  const trusted = getTrustedPubkeys();
+  const filtered87003 = trusted.size > 0
+    ? fetched87003.filter(e => trusted.has(e.pubkey.toLowerCase()))
+    : fetched87003;
+  const filtered87009 = trusted.size > 0
+    ? fetched87009.filter(e => trusted.has(e.pubkey.toLowerCase()))
+    : fetched87009;
+
+  console.log(`🔐 [AllNostrEvents] Trusted filter: 87003 ${fetched87003.length} → ${filtered87003.length}, 87009 ${fetched87009.length} → ${filtered87009.length} (trusted signers: ${trusted.size})`);
+
   // Parse 87003 events
-  const parsed87003: Kind87003Event[] = fetched87003.map((event: Event) => {
+  const parsed87003: Kind87003Event[] = filtered87003.map((event: Event) => {
     const pTag = event.tags.find(t => t[0] === 'p');
     const walletIdTag = event.tags.find(t => t[0] === 'WalletID');
     const txTag = event.tags.find(t => t[0] === 'TX');
     const linkedEventTag = event.tags.find(t => t[0] === 'Linked_event');
-    const amountTag = event.tags.find(t => t[0] === 'UnregistratedAmountLatoshis');
+    // Accept both correct ('UnregisteredAmountLatoshis') and legacy typo ('UnregistratedAmountLatoshis').
+    const amountTag =
+      event.tags.find(t => t[0] === 'UnregisteredAmountLatoshis') ||
+      event.tags.find(t => t[0] === 'UnregistratedAmountLatoshis');
 
     return {
       id: event.id,
@@ -97,7 +125,7 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
   });
 
   // Parse 87009 events
-  const parsed87009: Kind87009Event[] = fetched87009.map((event: Event) => {
+  const parsed87009: Kind87009Event[] = filtered87009.map((event: Event) => {
     const pTag = event.tags.find(t => t[0] === 'p');
     const eTag = event.tags.find(t => t[0] === 'e'); // Reference to 87003 event
     const txTag = event.tags.find(t => t[0] === 'tx');

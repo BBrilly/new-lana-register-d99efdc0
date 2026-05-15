@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
               ['p', userPubkey],
               ['WalletID', walletAddress],
               ['Linked_event', event.nostr_event_id || ''],
-              ['UnregistratedAmountLatoshis', amountLatoshis],
+              ['UnregisteredAmountLatoshis', amountLatoshis],
             ],
             content: 'Unregistered coins detected requiring regularization',
           };
