@@ -19,6 +19,7 @@ import LanaPaysPage from "./pages/LanaPaysPage";
 import LanaDiscountPage from "./pages/LanaDiscountPage";
 import FrozenWalletsPage from "./pages/FrozenWalletsPage";
 import ResolveMaxCap from "./pages/ResolveMaxCap";
+import PublicApiPage from "./pages/PublicApiPage";
 
 const queryClient = new QueryClient();
 
