@@ -31,6 +31,18 @@ let isFetching: boolean = false;
 let fetchPromise: Promise<{ events87003: Kind87003Event[]; events87009: Kind87009Event[] }> | null = null;
 const CACHE_DURATION_MS = 60000; // 1 minute cache
 
+// Collect trusted signer pubkeys from KIND 38888 system parameters.
+const getTrustedPubkeys = (params: any): Set<string> => {
+  const signers = params?.trusted_signers || {};
+  const all = new Set<string>();
+  for (const list of Object.values(signers)) {
+    if (Array.isArray(list)) {
+      for (const pk of list) if (typeof pk === 'string' && pk) all.add(pk.toLowerCase());
+    }
+  }
+  return all;
+};
+
 // Function to fetch all events (shared between all hook instances)
 const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events87009: Kind87009Event[] }> => {
   const { getStoredParameters, getStoredRelayStatuses } = await import('@/utils/nostrClient');
@@ -55,13 +67,33 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
 
   const pool = new SimplePool();
 
+  // Restrict to trusted signers from KIND 38888 server-side so spam pubkeys
+  // don't saturate the relay limit window.
+  const trustedSet = getTrustedPubkeys(params);
+  const trustedAuthors = trustedSet.size > 0 ? [...trustedSet] : undefined;
+
+  const filter87003: Filter = { kinds: [87003], limit: 1000 };
+  const filter87009: Filter = { kinds: [87009], limit: 1000 };
+  if (trustedAuthors) {
+    filter87003.authors = trustedAuthors;
+    filter87009.authors = trustedAuthors;
+  }
+
   // Fetch both kinds in parallel
-  const [fetched87003, fetched87009] = await Promise.all([
-    pool.querySync(relaysToUse, { kinds: [87003], limit: 500 } as Filter),
-    pool.querySync(relaysToUse, { kinds: [87009], limit: 500 } as Filter)
+  const [fetched87003Raw, fetched87009Raw] = await Promise.all([
+    pool.querySync(relaysToUse, filter87003),
+    pool.querySync(relaysToUse, filter87009)
   ]);
-  
-  console.log(`📥 Fetched ${fetched87003.length} Kind 87003 events and ${fetched87009.length} Kind 87009 events`);
+
+  // Client-side safety net in case a relay ignores `authors`.
+  const fetched87003 = trustedSet.size > 0
+    ? fetched87003Raw.filter(e => trustedSet.has(e.pubkey.toLowerCase()))
+    : fetched87003Raw;
+  const fetched87009 = trustedSet.size > 0
+    ? fetched87009Raw.filter(e => trustedSet.has(e.pubkey.toLowerCase()))
+    : fetched87009Raw;
+
+  console.log(`📥 Fetched ${fetched87003Raw.length}→${fetched87003.length} Kind 87003 events and ${fetched87009Raw.length}→${fetched87009.length} Kind 87009 events (trusted signers: ${trustedSet.size})`);
 
   // Parse 87003 events
   const parsed87003: Kind87003Event[] = fetched87003.map((event: Event) => {
@@ -69,7 +101,10 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
     const walletIdTag = event.tags.find(t => t[0] === 'WalletID');
     const txTag = event.tags.find(t => t[0] === 'TX');
     const linkedEventTag = event.tags.find(t => t[0] === 'Linked_event');
-    const amountTag = event.tags.find(t => t[0] === 'UnregistratedAmountLatoshis');
+    // Accept both correct ('UnregisteredAmountLatoshis') and legacy typo ('UnregistratedAmountLatoshis').
+    const amountTag =
+      event.tags.find(t => t[0] === 'UnregisteredAmountLatoshis') ||
+      event.tags.find(t => t[0] === 'UnregistratedAmountLatoshis');
 
     return {
       id: event.id,
