@@ -832,6 +832,10 @@ const LandingPage = () => {
                 <Database className="mr-2 h-4 w-4" />
                 API Docs
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/public-api")}>
+                <Globe className="mr-2 h-4 w-4" />
+                Public Data
+              </Button>
               <Button variant="ghost" size="sm">
                 <Activity className="mr-2 h-4 w-4" />
                 Nostr Standards
@@ -868,6 +872,10 @@ const LandingPage = () => {
                     <Button variant="ghost" className="justify-start gap-2" onClick={() => { navigate("/api-docs"); setMobileMenuOpen(false); }}>
                       <Database className="h-4 w-4" />
                       API Docs
+                    </Button>
+                    <Button variant="ghost" className="justify-start gap-2" onClick={() => { navigate("/public-api"); setMobileMenuOpen(false); }}>
+                      <Globe className="h-4 w-4" />
+                      Public Data
                     </Button>
                     <Button variant="ghost" className="justify-start gap-2" onClick={() => setMobileMenuOpen(false)}>
                       <Activity className="h-4 w-4" />
