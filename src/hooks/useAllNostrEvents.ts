@@ -82,10 +82,23 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
 
   const pool = new SimplePool();
 
+  // Compute trusted authors up-front so the relay does the filtering server-side.
+  // This prevents spam pubkeys from saturating the limit window and crowding out
+  // legitimate events from our trusted signers.
+  const trustedAuthorsSet = getTrustedPubkeys();
+  const trustedAuthors = trustedAuthorsSet.size > 0 ? [...trustedAuthorsSet] : undefined;
+
+  const filter87003: Filter = { kinds: [87003], limit: 1000 };
+  const filter87009: Filter = { kinds: [87009], limit: 1000 };
+  if (trustedAuthors) {
+    filter87003.authors = trustedAuthors;
+    filter87009.authors = trustedAuthors;
+  }
+
   // Fetch both kinds in parallel
   const [fetched87003, fetched87009] = await Promise.all([
-    pool.querySync(relaysToUse, { kinds: [87003], limit: 1000 } as Filter),
-    pool.querySync(relaysToUse, { kinds: [87009], limit: 1000 } as Filter)
+    pool.querySync(relaysToUse, filter87003),
+    pool.querySync(relaysToUse, filter87009)
   ]);
   
   console.log(`📥 [AllNostrEvents] Fetched ${fetched87003.length} Kind 87003 events and ${fetched87009.length} Kind 87009 events`);
