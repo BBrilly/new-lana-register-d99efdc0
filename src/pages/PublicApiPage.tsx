@@ -59,12 +59,24 @@ const PublicApiPage = () => {
   // Total number of registered wallets in the registry
   "registered_wallets_count": number,
 
-  // Sum of all registered LANA across all splits
+  // Sum of all registered LANA (latest balance snapshot, matches Balance history tab)
   "total_registered_lana": number,
 
-  // Last 30 days of transaction counts (one entry per day, oldest first)
+  // Number of transactions registered today (UTC)
+  "transactions_today_count": number,
+
+  // Total LANA amount of today's transactions (UTC)
+  "transactions_today_total_lana": number,
+
+  // All-time number of transactions in the registry
+  "transactions_all_time_count": number,
+
+  // All-time sum of LANA across all transactions
+  "transactions_all_time_total_lana": number,
+
+  // Last 30 days of transactions (oldest first); count + daily LANA total
   "transactions_per_day_last_30": [
-    { "date": "YYYY-MM-DD", "count": number }
+    { "date": "YYYY-MM-DD", "count": number, "total_amount_lana": number }
   ],
 
   // Wallets of type "Lana.Discount"

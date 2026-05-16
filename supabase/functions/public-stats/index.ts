@@ -48,32 +48,53 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const totalRegisteredLana = Number(latestSnapshot?.total_balance_lana || 0);
 
-    // 3. Transactions per day for last 30 days
+    // 3. Transactions per day for last 30 days (with daily amounts)
     const since = new Date();
     since.setDate(since.getDate() - 30);
     since.setHours(0, 0, 0, 0);
 
-    const txs = await fetchAllPaginated<{ created_at: string }>((from, to) =>
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const txs = await fetchAllPaginated<{ created_at: string; amount: number | string }>((from, to) =>
       supabase
         .from('transactions')
-        .select('created_at')
+        .select('created_at, amount')
         .gte('created_at', since.toISOString())
         .range(from, to),
     );
 
-    const byDay: Record<string, number> = {};
+    const byDayCount: Record<string, number> = {};
+    const byDayAmount: Record<string, number> = {};
     for (let i = 0; i < 30; i++) {
       const d = new Date(since);
       d.setDate(since.getDate() + i);
-      byDay[d.toISOString().slice(0, 10)] = 0;
+      const k = d.toISOString().slice(0, 10);
+      byDayCount[k] = 0;
+      byDayAmount[k] = 0;
     }
     for (const tx of txs) {
       const day = tx.created_at.slice(0, 10);
-      if (day in byDay) byDay[day]++;
+      if (day in byDayCount) {
+        byDayCount[day]++;
+        byDayAmount[day] += Number(tx.amount) || 0;
+      }
     }
-    const transactionsPerDay = Object.entries(byDay)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, count }));
+    const transactionsPerDay = Object.keys(byDayCount)
+      .sort()
+      .map((date) => ({ date, count: byDayCount[date], total_amount_lana: byDayAmount[date] }));
+
+    const transactionsToday = byDayCount[todayStr] || 0;
+    const transactionsTodayTotalLana = byDayAmount[todayStr] || 0;
+
+    // All-time totals (count + sum)
+    const { count: allTimeTxCount } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true });
+
+    const allTxAmounts = await fetchAllPaginated<{ amount: number | string }>((from, to) =>
+      supabase.from('transactions').select('amount').range(from, to),
+    );
+    const allTimeTxTotalLana = allTxAmounts.reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
     // 4. Lana.Discount wallets
     const lanaDiscountWallets = await fetchAllPaginated<{
@@ -145,6 +166,10 @@ Deno.serve(async (req) => {
       source: 'https://www.lanawatch.us',
       registered_wallets_count: registeredWalletsCount || 0,
       total_registered_lana: totalRegisteredLana,
+      transactions_today_count: transactionsToday,
+      transactions_today_total_lana: transactionsTodayTotalLana,
+      transactions_all_time_count: allTimeTxCount || 0,
+      transactions_all_time_total_lana: allTimeTxTotalLana,
       transactions_per_day_last_30: transactionsPerDay,
       lana_discount_wallets: lanaDiscountWallets.map((w) => ({
         wallet_id: w.wallet_id,
