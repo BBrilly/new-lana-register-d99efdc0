@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
     since.setHours(0, 0, 0, 0);
 
     const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
     const txs = await fetchAllPaginated<{ created_at: string; amount: number | string }>((from, to) =>
       supabase
@@ -85,6 +88,8 @@ Deno.serve(async (req) => {
 
     const transactionsToday = byDayCount[todayStr] || 0;
     const transactionsTodayTotalLana = byDayAmount[todayStr] || 0;
+    const transactionsYesterday = byDayCount[yesterdayStr] || 0;
+    const transactionsYesterdayTotalLana = byDayAmount[yesterdayStr] || 0;
 
     // All-time totals (count + sum)
     const { count: allTimeTxCount } = await supabase
@@ -168,6 +173,8 @@ Deno.serve(async (req) => {
       total_registered_lana: totalRegisteredLana,
       transactions_today_count: transactionsToday,
       transactions_today_total_lana: transactionsTodayTotalLana,
+      transactions_yesterday_count: transactionsYesterday,
+      transactions_yesterday_total_lana: transactionsYesterdayTotalLana,
       transactions_all_time_count: allTimeTxCount || 0,
       transactions_all_time_total_lana: allTimeTxTotalLana,
       transactions_per_day_last_30: transactionsPerDay,

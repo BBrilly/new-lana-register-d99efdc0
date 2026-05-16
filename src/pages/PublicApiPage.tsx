@@ -68,6 +68,12 @@ const PublicApiPage = () => {
   // Total LANA amount of today's transactions (UTC)
   "transactions_today_total_lana": number,
 
+  // Number of transactions registered yesterday (UTC)
+  "transactions_yesterday_count": number,
+
+  // Total LANA amount of yesterday's transactions (UTC)
+  "transactions_yesterday_total_lana": number,
+
   // All-time number of transactions in the registry
   "transactions_all_time_count": number,
 
