@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
     const byDayCount: Record<string, number> = {};
     const byDayAmount: Record<string, number> = {};
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i <= 30; i++) {
       const d = new Date(since);
       d.setDate(since.getDate() + i);
       const k = d.toISOString().slice(0, 10);
