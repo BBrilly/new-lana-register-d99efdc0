@@ -173,6 +173,8 @@ Deno.serve(async (req) => {
       total_registered_lana: totalRegisteredLana,
       transactions_today_count: transactionsToday,
       transactions_today_total_lana: transactionsTodayTotalLana,
+      transactions_yesterday_count: transactionsYesterday,
+      transactions_yesterday_total_lana: transactionsYesterdayTotalLana,
       transactions_all_time_count: allTimeTxCount || 0,
       transactions_all_time_total_lana: allTimeTxTotalLana,
       transactions_per_day_last_30: transactionsPerDay,
