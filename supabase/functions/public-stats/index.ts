@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
 
     const transactionsToday = byDayCount[todayStr] || 0;
     const transactionsTodayTotalLana = byDayAmount[todayStr] || 0;
+    const transactionsYesterday = byDayCount[yesterdayStr] || 0;
+    const transactionsYesterdayTotalLana = byDayAmount[yesterdayStr] || 0;
 
     // All-time totals (count + sum)
     const { count: allTimeTxCount } = await supabase
