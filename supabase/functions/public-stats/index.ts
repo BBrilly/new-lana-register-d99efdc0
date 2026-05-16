@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
     since.setHours(0, 0, 0, 0);
 
     const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
     const txs = await fetchAllPaginated<{ created_at: string; amount: number | string }>((from, to) =>
       supabase
