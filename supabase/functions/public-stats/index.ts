@@ -166,6 +166,10 @@ Deno.serve(async (req) => {
       source: 'https://www.lanawatch.us',
       registered_wallets_count: registeredWalletsCount || 0,
       total_registered_lana: totalRegisteredLana,
+      transactions_today_count: transactionsToday,
+      transactions_today_total_lana: transactionsTodayTotalLana,
+      transactions_all_time_count: allTimeTxCount || 0,
+      transactions_all_time_total_lana: allTimeTxTotalLana,
       transactions_per_day_last_30: transactionsPerDay,
       lana_discount_wallets: lanaDiscountWallets.map((w) => ({
         wallet_id: w.wallet_id,
