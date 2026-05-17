@@ -104,13 +104,15 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
   console.log(`📥 [AllNostrEvents] Fetched ${fetched87003.length} Kind 87003 events and ${fetched87009.length} Kind 87009 events`);
 
   // Filter to trusted signers from KIND 38888 only.
+  // If trusted_signers is not loaded yet, show NOTHING (prevents spam pubkeys
+  // from being displayed when the trust list isn't available).
   const trusted = getTrustedPubkeys();
   const filtered87003 = trusted.size > 0
     ? fetched87003.filter(e => trusted.has(e.pubkey.toLowerCase()))
-    : fetched87003;
+    : [];
   const filtered87009 = trusted.size > 0
     ? fetched87009.filter(e => trusted.has(e.pubkey.toLowerCase()))
-    : fetched87009;
+    : [];
 
   console.log(`🔐 [AllNostrEvents] Trusted filter: 87003 ${fetched87003.length} → ${filtered87003.length}, 87009 ${fetched87009.length} → ${filtered87009.length} (trusted signers: ${trusted.size})`);
 
