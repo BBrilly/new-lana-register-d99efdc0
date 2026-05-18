@@ -177,6 +177,11 @@ const LandingPage = () => {
           .from('wallets')
           .select('*', { count: 'exact', head: true });
 
+        // Fetch main wallets count (people)
+        const { count: mainWalletsCount } = await supabase
+          .from('main_wallets')
+          .select('*', { count: 'exact', head: true });
+
         // Fetch transactions for today and yesterday
         const today = new Date();
         today.setHours(0, 0, 0, 0);
