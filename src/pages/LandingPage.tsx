@@ -830,18 +830,6 @@ const LandingPage = () => {
 
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/api-docs")}>
-                <Database className="mr-2 h-4 w-4" />
-                API Docs
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/public-api")}>
-                <Globe className="mr-2 h-4 w-4" />
-                Public Data
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Activity className="mr-2 h-4 w-4" />
-                Nostr Standards
-              </Button>
               {!isLoading && systemParams && (
                 <Button
                   variant="ghost"
