@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +17,13 @@ interface UserGroup {
   nostrHexId: string | null;
   totalBalance: number;
   wallets: WalletWithBalance[];
+  frozenCount: number;
+  anyFrozen: boolean;
 }
 
 const UsersAggregatedPage = () => {
   const navigate = useNavigate();
-  const { walletBalances, isLoading } = usePublicWalletBalances(WALLET_TYPES);
+  const { walletBalances, isLoading, lanaLimits, fxRates } = usePublicWalletBalances(WALLET_TYPES);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -32,16 +34,20 @@ const UsersAggregatedPage = () => {
       const key = w.main_wallet_id || w.nostr_hex_id || w.name || "unknown";
       const name = w.display_name || w.name || "(Unknown)";
       if (!map.has(key)) {
-        map.set(key, { key, name, nostrHexId: w.nostr_hex_id ?? null, totalBalance: 0, wallets: [] });
+        map.set(key, { key, name, nostrHexId: w.nostr_hex_id ?? null, totalBalance: 0, wallets: [], frozenCount: 0, anyFrozen: false });
       }
       const g = map.get(key)!;
       g.totalBalance += w.balance;
       g.wallets.push(w);
+      if (w.frozen) { g.frozenCount += 1; g.anyFrozen = true; }
     }
     const arr = Array.from(map.values());
     arr.sort((a, b) => sortDir === "desc" ? b.totalBalance - a.totalBalance : a.totalBalance - b.totalBalance);
     return arr;
   }, [walletBalances, sortDir]);
+
+  const lanaLimit = lanaLimits?.EUR ?? null;
+  const isOverLimit = (balance: number) => lanaLimit !== null && balance > lanaLimit;
 
   const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.totalBalance, 0), [groups]);
 
