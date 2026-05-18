@@ -12,6 +12,8 @@ export interface WalletWithBalance {
   split_created: number | null;
   frozen?: boolean;
   freeze_reason?: string;
+  main_wallet_id?: string | null;
+  nostr_hex_id?: string | null;
 }
 
 export interface FxLimits {
@@ -51,7 +53,7 @@ export const usePublicWalletBalances = (walletTypes: string[]) => {
         while (hasMore) {
           const { data, error } = await supabase
             .from('wallets')
-            .select(`id, wallet_id, wallet_type, split_created, frozen, freeze_reason, main_wallet:main_wallets(name, display_name)`)
+            .select(`id, wallet_id, wallet_type, split_created, frozen, freeze_reason, main_wallet_id, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
             .in('wallet_type', walletTypes)
             .range(offset, offset + PAGE_SIZE - 1);
 
@@ -112,6 +114,8 @@ export const usePublicWalletBalances = (walletTypes: string[]) => {
           split_created: wallet.split_created ?? null,
           frozen: wallet.frozen ?? false,
           freeze_reason: wallet.freeze_reason || undefined,
+          main_wallet_id: wallet.main_wallet_id ?? null,
+          nostr_hex_id: (wallet.main_wallet as any)?.nostr_hex_id ?? null,
         })));
       } catch (err) {
         console.error('Error loading wallets:', err);

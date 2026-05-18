@@ -20,6 +20,7 @@ import LanaDiscountPage from "./pages/LanaDiscountPage";
 import FrozenWalletsPage from "./pages/FrozenWalletsPage";
 import ResolveMaxCap from "./pages/ResolveMaxCap";
 import PublicApiPage from "./pages/PublicApiPage";
+import UsersAggregatedPage from "./pages/UsersAggregatedPage";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/frozen-wallets" element={<FrozenWalletsPage />} />
           <Route path="/wallets/resolve-max-cap" element={<ResolveMaxCap />} />
           <Route path="/public-api" element={<PublicApiPage />} />
+          <Route path="/users-aggregated" element={<UsersAggregatedPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
