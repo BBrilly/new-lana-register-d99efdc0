@@ -59,6 +59,9 @@ const PublicApiPage = () => {
   // Total number of registered wallets in the registry
   "registered_wallets_count": number,
 
+  // Number of unique people (= number of main wallets, one per person)
+  "people_count": number,
+
   // Sum of all registered LANA (latest balance snapshot, matches Balance history tab)
   "total_registered_lana": number,
 
