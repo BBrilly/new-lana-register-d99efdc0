@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3 } from "lucide-react";
+import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ const LINKS = [
   { path: "/frozen-wallets", label: "Frozen Wallets", icon: Snowflake },
   { path: "/public-api", label: "Public Data", icon: Globe },
   { path: "/api-docs", label: "API Docs", icon: Database },
+  { path: "/api-docs#nostr-standards", label: "Nostr Standards", icon: Activity },
 ];
 
 const PublicLinksSidebar = () => {
