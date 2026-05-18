@@ -51,6 +51,20 @@ const UsersAggregatedPage = () => {
 
   const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.totalBalance, 0), [groups]);
 
+  const breakdown = useMemo(() => {
+    if (lanaLimit === null) return null;
+    const over = groups.filter(g => g.totalBalance > lanaLimit);
+    const overTotal = over.reduce((s, g) => s + g.totalBalance, 0);
+    const overFrozen = over.filter(g => g.anyFrozen);
+    const overFrozenTotal = overFrozen.reduce((s, g) => s + g.totalBalance, 0);
+    return {
+      overCount: over.length,
+      overTotal,
+      overFrozenCount: overFrozen.length,
+      overFrozenTotal,
+    };
+  }, [groups, lanaLimit]);
+
   const toggle = (key: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -99,6 +113,44 @@ const UsersAggregatedPage = () => {
                 <span className="mx-1">|</span>
                 <AlertTriangle className="h-3 w-3 text-sky-400" /> Over limit
               </span>
+            </div>
+          )}
+
+          {breakdown && (
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg border p-4 bg-sky-50/60 dark:bg-sky-900/20">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <AlertTriangle className="h-4 w-4 text-sky-500" /> Users over limit
+                </div>
+                <div className="mt-1 text-2xl font-bold text-sky-700 dark:text-sky-300">
+                  {breakdown.overCount}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  holding {breakdown.overTotal.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
+                </div>
+              </div>
+              <div className="rounded-lg border p-4 bg-sky-50 dark:bg-sky-950/30">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Snowflake className="h-4 w-4 text-sky-500" /> ...of which already frozen
+                </div>
+                <div className="mt-1 text-2xl font-bold text-sky-700 dark:text-sky-300">
+                  {breakdown.overFrozenCount}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  holding {breakdown.overFrozenTotal.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
+                </div>
+              </div>
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Not yet frozen
+                </div>
+                <div className="mt-1 text-2xl font-bold text-foreground">
+                  {breakdown.overCount - breakdown.overFrozenCount}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  holding {(breakdown.overTotal - breakdown.overFrozenTotal).toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
+                </div>
+              </div>
             </div>
           )}
 
