@@ -913,7 +913,7 @@ const LandingPage = () => {
           <div className="flex items-center gap-2 text-center">
             <Shield className="h-5 w-5 md:h-6 md:w-6 text-success shrink-0" />
             <span className="text-sm md:text-lg text-foreground">
-              Currently auditing <span className="font-bold text-primary">{stats.registeredWallets}</span> accounts
+              Currently auditing <span className="font-bold text-primary">{stats.registeredWallets.toLocaleString()}</span> Wallets from <span className="font-bold text-primary">{stats.mainWallets.toLocaleString()}</span> people
             </span>
           </div>
           <div className="flex items-center gap-2 text-center">
