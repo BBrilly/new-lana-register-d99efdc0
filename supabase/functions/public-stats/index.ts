@@ -39,6 +39,11 @@ Deno.serve(async (req) => {
       .from('wallets')
       .select('*', { count: 'exact', head: true });
 
+    // 1b. People count = number of main_wallets (one per person)
+    const { count: peopleCount } = await supabase
+      .from('main_wallets')
+      .select('*', { count: 'exact', head: true });
+
     // 2. Total registered LANA = latest balance snapshot (matches Balance history tab)
     const { data: latestSnapshot } = await supabase
       .from('balance_snapshots')
@@ -170,6 +175,7 @@ Deno.serve(async (req) => {
       generated_at: new Date().toISOString(),
       source: 'https://www.lanawatch.us',
       registered_wallets_count: registeredWalletsCount || 0,
+      people_count: peopleCount || 0,
       total_registered_lana: totalRegisteredLana,
       transactions_today_count: transactionsToday,
       transactions_today_total_lana: transactionsTodayTotalLana,
