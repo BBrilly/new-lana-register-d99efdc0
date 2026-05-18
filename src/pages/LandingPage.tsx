@@ -215,6 +215,7 @@ const LandingPage = () => {
 
         setStats({
           registeredWallets: walletsCount || 0,
+          mainWallets: mainWalletsCount || 0,
           todayTransactions: todayTx?.length || 0,
           yesterdayTransactions: yesterdayTx?.length || 0,
           totalMonitoredTransactions: totalMonitoredAmount,
