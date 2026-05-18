@@ -12,6 +12,7 @@ import NostrStatusDialog from "@/components/NostrStatusDialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import BlockDetailDialog from "@/components/BlockDetailDialog";
+import PublicLinksSidebar from "@/components/PublicLinksSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -814,6 +815,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PublicLinksSidebar />
       {/* Header */}
       <nav className="border-b border-border bg-card">
         <div className="container mx-auto px-4">
