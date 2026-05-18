@@ -56,6 +56,7 @@ const LandingPage = () => {
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [stats, setStats] = useState({
     registeredWallets: 0,
+    mainWallets: 0,
     todayTransactions: 0,
     yesterdayTransactions: 0,
     totalMonitoredTransactions: 0,
