@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +17,13 @@ interface UserGroup {
   nostrHexId: string | null;
   totalBalance: number;
   wallets: WalletWithBalance[];
+  frozenCount: number;
+  anyFrozen: boolean;
 }
 
 const UsersAggregatedPage = () => {
   const navigate = useNavigate();
-  const { walletBalances, isLoading } = usePublicWalletBalances(WALLET_TYPES);
+  const { walletBalances, isLoading, lanaLimits, fxRates } = usePublicWalletBalances(WALLET_TYPES);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -32,16 +34,20 @@ const UsersAggregatedPage = () => {
       const key = w.main_wallet_id || w.nostr_hex_id || w.name || "unknown";
       const name = w.display_name || w.name || "(Unknown)";
       if (!map.has(key)) {
-        map.set(key, { key, name, nostrHexId: w.nostr_hex_id ?? null, totalBalance: 0, wallets: [] });
+        map.set(key, { key, name, nostrHexId: w.nostr_hex_id ?? null, totalBalance: 0, wallets: [], frozenCount: 0, anyFrozen: false });
       }
       const g = map.get(key)!;
       g.totalBalance += w.balance;
       g.wallets.push(w);
+      if (w.frozen) { g.frozenCount += 1; g.anyFrozen = true; }
     }
     const arr = Array.from(map.values());
     arr.sort((a, b) => sortDir === "desc" ? b.totalBalance - a.totalBalance : a.totalBalance - b.totalBalance);
     return arr;
   }, [walletBalances, sortDir]);
+
+  const lanaLimit = lanaLimits?.EUR ?? null;
+  const isOverLimit = (balance: number) => lanaLimit !== null && balance > lanaLimit;
 
   const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.totalBalance, 0), [groups]);
 
@@ -82,6 +88,20 @@ const UsersAggregatedPage = () => {
             </div>
           </div>
 
+          {lanaLimits && fxRates && (
+            <div className="mb-4 p-3 rounded-lg border bg-muted/30 flex flex-wrap gap-4 items-center text-sm">
+              <span className="font-medium text-muted-foreground">50 unit limit in LANA:</span>
+              <Badge variant="outline">EUR: {lanaLimits.EUR.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LANA</Badge>
+              <Badge variant="outline">GBP: {lanaLimits.GBP.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LANA</Badge>
+              <Badge variant="outline">USD: {lanaLimits.USD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} LANA</Badge>
+              <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                <Snowflake className="h-3 w-3 text-sky-500" /> Frozen
+                <span className="mx-1">|</span>
+                <AlertTriangle className="h-3 w-3 text-sky-400" /> Over limit
+              </span>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -117,21 +137,39 @@ const UsersAggregatedPage = () => {
                   ) : (
                     groups.map((g, idx) => {
                       const isOpen = expanded.has(g.key);
+                      const overLimit = isOverLimit(g.totalBalance) && !g.anyFrozen;
                       return (
                         <Fragment key={g.key}>
                           <TableRow
-                            className="cursor-pointer"
+                            className={cn(
+                              "cursor-pointer",
+                              g.anyFrozen && "bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/30 dark:hover:bg-sky-950/50",
+                              overLimit && "bg-sky-50/60 hover:bg-sky-100/60 dark:bg-sky-900/20 dark:hover:bg-sky-900/30"
+                            )}
                             onClick={() => toggle(g.key)}
                           >
                             <TableCell>
                               {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </TableCell>
                             <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
-                            <TableCell className="font-medium">{g.name}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                {g.anyFrozen && <Snowflake className="h-3.5 w-3.5 text-sky-500 shrink-0" />}
+                                <span className={cn("font-medium", overLimit && "text-sky-600 dark:text-sky-400 font-semibold")}>
+                                  {g.name}
+                                </span>
+                                {g.anyFrozen && (
+                                  <Badge variant="outline" className="text-[10px] gap-1 border-sky-300 text-sky-700 dark:text-sky-300">
+                                    {g.frozenCount}/{g.wallets.length} frozen
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-center">
                               <Badge variant="outline">{g.wallets.length}</Badge>
                             </TableCell>
-                            <TableCell className="text-right font-semibold">
+                            <TableCell className={cn("text-right font-semibold", overLimit && "text-sky-600 dark:text-sky-400")}>
+                              {overLimit && <AlertTriangle className="h-3 w-3 inline mr-1" />}
                               {g.totalBalance.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
                             </TableCell>
                           </TableRow>
