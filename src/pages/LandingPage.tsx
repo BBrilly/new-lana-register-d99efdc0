@@ -56,6 +56,7 @@ const LandingPage = () => {
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [stats, setStats] = useState({
     registeredWallets: 0,
+    mainWallets: 0,
     todayTransactions: 0,
     yesterdayTransactions: 0,
     totalMonitoredTransactions: 0,
@@ -176,6 +177,11 @@ const LandingPage = () => {
           .from('wallets')
           .select('*', { count: 'exact', head: true });
 
+        // Fetch main wallets count (people)
+        const { count: mainWalletsCount } = await supabase
+          .from('main_wallets')
+          .select('*', { count: 'exact', head: true });
+
         // Fetch transactions for today and yesterday
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -209,6 +215,7 @@ const LandingPage = () => {
 
         setStats({
           registeredWallets: walletsCount || 0,
+          mainWallets: mainWalletsCount || 0,
           todayTransactions: todayTx?.length || 0,
           yesterdayTransactions: yesterdayTx?.length || 0,
           totalMonitoredTransactions: totalMonitoredAmount,
@@ -906,7 +913,7 @@ const LandingPage = () => {
           <div className="flex items-center gap-2 text-center">
             <Shield className="h-5 w-5 md:h-6 md:w-6 text-success shrink-0" />
             <span className="text-sm md:text-lg text-foreground">
-              Currently auditing <span className="font-bold text-primary">{stats.registeredWallets}</span> accounts
+              Currently auditing <span className="font-bold text-primary">{stats.registeredWallets.toLocaleString()}</span> Wallets from <span className="font-bold text-primary">{stats.mainWallets.toLocaleString()}</span> people
             </span>
           </div>
           <div className="flex items-center gap-2 text-center">
