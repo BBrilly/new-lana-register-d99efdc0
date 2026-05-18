@@ -53,7 +53,7 @@ export const usePublicWalletBalances = (walletTypes: string[]) => {
         while (hasMore) {
           const { data, error } = await supabase
             .from('wallets')
-            .select(`id, wallet_id, wallet_type, split_created, frozen, freeze_reason, main_wallet:main_wallets(name, display_name)`)
+            .select(`id, wallet_id, wallet_type, split_created, frozen, freeze_reason, main_wallet_id, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
             .in('wallet_type', walletTypes)
             .range(offset, offset + PAGE_SIZE - 1);
 
