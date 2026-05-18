@@ -12,6 +12,8 @@ export interface WalletWithBalance {
   split_created: number | null;
   frozen?: boolean;
   freeze_reason?: string;
+  main_wallet_id?: string | null;
+  nostr_hex_id?: string | null;
 }
 
 export interface FxLimits {
