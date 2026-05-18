@@ -20,7 +20,7 @@ const PublicLinksSidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="hidden xl:block fixed right-4 top-24 z-30 w-56">
+    <aside className="hidden md:block fixed right-4 top-24 z-30 w-52">
       <Card className="p-3 shadow-lg bg-card/95 backdrop-blur">
         <div className="flex items-center gap-2 px-2 pb-2 border-b mb-2">
           <BarChart3 className="h-4 w-4 text-primary" />
