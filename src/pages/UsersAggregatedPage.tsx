@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake } from "lucide-react";
@@ -118,9 +118,8 @@ const UsersAggregatedPage = () => {
                     groups.map((g, idx) => {
                       const isOpen = expanded.has(g.key);
                       return (
-                        <>
+                        <Fragment key={g.key}>
                           <TableRow
-                            key={g.key}
                             className="cursor-pointer"
                             onClick={() => toggle(g.key)}
                           >
