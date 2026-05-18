@@ -193,7 +193,7 @@ const UsersAggregatedPage = () => {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </Fragment>
                       );
                     })
                   )}
