@@ -39,6 +39,11 @@ Deno.serve(async (req) => {
       .from('wallets')
       .select('*', { count: 'exact', head: true });
 
+    // 1b. People count = number of main_wallets (one per person)
+    const { count: peopleCount } = await supabase
+      .from('main_wallets')
+      .select('*', { count: 'exact', head: true });
+
     // 2. Total registered LANA = latest balance snapshot (matches Balance history tab)
     const { data: latestSnapshot } = await supabase
       .from('balance_snapshots')
