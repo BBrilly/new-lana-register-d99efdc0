@@ -205,6 +205,10 @@ Deno.serve(async (req) => {
         split_created: w.split_created,
         name: (w.main_wallet as any)?.display_name || (w.main_wallet as any)?.name || null,
       })),
+      retail_wallets: retailWallets.map((w) => ({
+        wallet_id: w.wallet_id,
+        name: (w.main_wallet as any)?.display_name || (w.main_wallet as any)?.name || null,
+      })),
       current_split: currentSplit,
       lanaknight_transactions_current_split: knightsTx,
     };
