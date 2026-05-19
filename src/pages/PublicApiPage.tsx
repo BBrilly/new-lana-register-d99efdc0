@@ -98,6 +98,11 @@ const PublicApiPage = () => {
     { "wallet_id": "L...", "split_created": number|null, "name": "string|null" }
   ],
 
+  // Wallets of type "Retail"
+  "retail_wallets": [
+    { "wallet_id": "L...", "name": "string|null" }
+  ],
+
   // Current split number from system parameters (KIND 38888)
   "current_split": number|null,
 
