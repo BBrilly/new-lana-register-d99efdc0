@@ -131,6 +131,18 @@ Deno.serve(async (req) => {
         .range(from, to),
     );
 
+    // 5b. Retail wallets
+    const retailWallets = await fetchAllPaginated<{
+      wallet_id: string | null;
+      main_wallet: any;
+    }>((from, to) =>
+      supabase
+        .from('wallets')
+        .select('wallet_id, main_wallet:main_wallets(name, display_name)')
+        .eq('wallet_type', 'Retail')
+        .range(from, to),
+    );
+
     // 6. Current split + LanaKnight TX from current split
     const { data: sysParams } = await supabase
       .from('system_parameters')
