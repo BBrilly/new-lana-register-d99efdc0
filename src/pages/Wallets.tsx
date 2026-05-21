@@ -146,6 +146,7 @@ const Wallets = () => {
                 wallet={wallet} 
                 onDelete={handleDeleteWallet}
                 onUpdateNotes={handleUpdateNotes}
+                onConvertToRetail={handleConvertToRetail}
                 userCurrency={userCurrency}
                 fxRates={fxRates}
               />
