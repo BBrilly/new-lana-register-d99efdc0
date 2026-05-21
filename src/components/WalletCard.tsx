@@ -385,6 +385,26 @@ const WalletCard = ({ wallet, onDelete, onUpdateNotes, onConvertToRetail, userCu
           }}
         />
       )}
+
+      {onConvertToRetail && (
+        <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Convert wallet to Retail?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This wallet will be permanently changed from <strong>Wallet</strong> to <strong>Retail</strong>.
+                This action is <strong>one-way</strong> — Retail wallets cannot be converted back. The updated wallet list will be re-published to Nostr (KIND 30889).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isConverting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={(e) => { e.preventDefault(); handleConvert(); }} disabled={isConverting}>
+                {isConverting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Converting...</> : "Convert to Retail"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Card>
   );
 };
