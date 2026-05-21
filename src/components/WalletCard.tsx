@@ -25,17 +25,33 @@ interface WalletCardProps {
   wallet: Wallet;
   onDelete: (id: string) => Promise<void>;
   onUpdateNotes?: (id: string, notes: string) => Promise<void>;
+  onConvertToRetail?: (id: string) => Promise<void>;
   userCurrency: string;
   fxRates: { EUR: number; GBP: number; USD: number } | null;
 }
 
-const WalletCard = ({ wallet, onDelete, onUpdateNotes, userCurrency, fxRates }: WalletCardProps) => {
+const WalletCard = ({ wallet, onDelete, onUpdateNotes, onConvertToRetail, userCurrency, fxRates }: WalletCardProps) => {
   const [copied, setCopied] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState(wallet.description);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const navigate = useNavigate();
+
+  const handleConvert = async () => {
+    if (!onConvertToRetail) return;
+    setIsConverting(true);
+    try {
+      await onConvertToRetail(wallet.id);
+      setShowConvertDialog(false);
+    } catch {
+      // toast handled in parent
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   const handleSaveNotes = async () => {
     if (!onUpdateNotes) return;
