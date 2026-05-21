@@ -239,6 +239,17 @@ const WalletCard = ({ wallet, onDelete, onUpdateNotes, onConvertToRetail, userCu
               <ExternalLink className="h-4 w-4" />
               Transactions
             </Button>
+            {onConvertToRetail && wallet.type === "Wallet" && !isFrozen && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowConvertDialog(true)}
+                className="gap-2 text-xs sm:text-sm"
+              >
+                <Store className="h-4 w-4" />
+                Convert to Retail
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
