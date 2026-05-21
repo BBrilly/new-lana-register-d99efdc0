@@ -70,6 +70,34 @@ const Wallets = () => {
     }
   };
 
+  const handleConvertToRetail = async (id: string) => {
+    const session = getAuthSession();
+    if (!session) {
+      toast.error("You must be logged in to convert a wallet");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke("update-wallet-type", {
+        body: {
+          api_key: "lk_w1fHNwvEKpCtgGjXqIEFz1yKEynnwuoe",
+          wallet_uuid: id,
+          nostr_id_hex: session.nostrHexId,
+          new_wallet_type: "Retail",
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Conversion failed");
+
+      toast.success("Wallet converted to Retail and synced to Nostr");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to convert wallet");
+      throw err;
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -118,6 +146,7 @@ const Wallets = () => {
                 wallet={wallet} 
                 onDelete={handleDeleteWallet}
                 onUpdateNotes={handleUpdateNotes}
+                onConvertToRetail={handleConvertToRetail}
                 userCurrency={userCurrency}
                 fxRates={fxRates}
               />

@@ -1,52 +1,47 @@
-## Diagnoza
+## Cilj
 
-Filter trusted signerjev deluje pravilno — naš `LanaRegistrar` pubkey (`bcb0cf91…521e`) JE v `trusted_signers` v KIND 38888. Tvoji ključi niso bili izbrisani.
+Lastnik denarnice tipa **Wallet** lahko z enim klikom spremeni tip v **Retail**. Pretvorba je enosmerna in dovoljena izključno za vir `Wallet`. Vsi ostali tipi (Main Wallet, LanaPays.Us, Knights, Lana8Wonder, Retail, …) ostajajo nespremenljivi. Po uspešni spremembi se na releje ponovno objavi `KIND 30889` z osveženim seznamom denarnic uporabnika.
 
-Težava je v **vrstnem redu in kapaciteti poizvedbe**:
+## Spremembe
 
-- Releji vrnejo zadnjih `limit: 1000` Kind 87003 eventov (dejansko vrnili 500).
-- Vseh 500 vrnjenih je iz spam pubkeya `080936…26b427` (NI trusted).
-- Naši legitimni eventi iz našega registrarja so zadnjič bili objavljeni **20. aprila 2026** (pred ~25 dnevi) — releji jih ne pošljejo več, ker jih spam izrine iz najnovejših 500.
-- Filter potem upravičeno odreže vseh 500 → 0 prikazanih.
+### 1. Nova edge funkcija `update-wallet-type`
+Po vzoru `update-wallet-notes/index.ts`:
+- Vhod: `api_key`, `wallet_uuid`, `nostr_id_hex`, `new_wallet_type`.
+- Validacije:
+  - Aktivni API ključ.
+  - Denarnica obstaja in `main_wallet.nostr_hex_id === nostr_id_hex` (lastništvo).
+  - `wallet.wallet_type === 'Wallet'` in `new_wallet_type === 'Retail'` — sicer 403/400 z jasno napako (prepreči obraten prehod in vse druge prehode).
+- `UPDATE wallets SET wallet_type = 'Retail' WHERE id = wallet_uuid`.
+- Ponovna gradnja in objava `KIND 30889`:
+  - prebere `nostr_registrar_nsec` iz `app_settings`,
+  - prebere releje iz `system_parameters.relays` (flat array — glej core memory),
+  - povleče vse uporabnikove `wallets` (`wallet_id, wallet_type, notes, amount_unregistered_lanoshi, frozen`),
+  - sestavi `w` tag po obstoječi v1.1 shemi s 7 polji,
+  - `SimplePool.publish` z `Promise.race` timeouti (8s/objava, ~30s skupaj — glej core memory),
+  - tag `d` = `nostr_id_hex`, `status` = `"active"`.
+- Vrne `{ success, message }` brez razkrivanja internih napak.
 
-Zato vidiš prazno tabelo: ne ker je filter slab, ampak ker spam zasede celotno okno relay query-ja.
+### 2. Frontend — `WalletCard.tsx`
+- Nov prop `onConvertToRetail?: (id: string) => Promise<void>`.
+- Akcija vidna **samo** če `wallet.type === 'Wallet'` (case-sensitive ujemanje, ker so DB vrednosti case-sensitive — glej core memory) in ni `frozen`.
+- Gumb v vrstici z akcijami: »Convert to Retail« s potrditvenim `AlertDialog`-om, ki opozori, da je dejanje enosmerno.
+- Po uspehu: toast + `refetch` (preko klica v parent handlerju).
 
-## Popravek
+### 3. `Wallets.tsx`
+- Dodan handler `handleConvertToRetail(id)`, ki kliče `supabase.functions.invoke('update-wallet-type', { body: { api_key, wallet_uuid, nostr_id_hex, new_wallet_type: 'Retail' } })`, prikaže toast in osveži seznam.
+- Preda `onConvertToRetail` v `WalletCard`.
 
-Premakniti filter **na rejev side** — v `pool.querySync(...)` Filter dodati `authors: [...trustedPubkeys]`. Tako rele od začetka pošlje samo evente avtoriziranih signerjev in spam ne more zasesti limit kvote.
+### 4. Brez sprememb sheme
+DB ostaja enaka — `Retail` že obstaja v `wallet_types`. Migracije niso potrebne.
 
-### Spremembe (samo `src/hooks/useAllNostrEvents.ts`)
+## Tehnične opombe
 
-1. Pridobi trusted pubkeys ZGORAJ pred query-jem.
-2. Če je trusted set neprazen, dodaj `authors: [...trusted]` v oba filtra (87003 in 87009).
-3. Obdrži tudi client-side filter kot varnostno mrežo (releji včasih ne spoštujejo `authors`).
-4. Če `trusted_signers` še ni naložen iz session storage (race condition po reload-u), počakaj/ne filtriraj — fallback na trenutno vedenje, da ne prikažemo praznega seznama brez razloga.
+- `verify_jwt = false` za edge funkcijo (skladno z ostalimi tukaj uporabljenimi funkcijami, API ključ se validira v kodi).
+- Strogo strežniško preverjanje pravila prehoda — frontend zgolj skriva gumb, edge funkcija zavrne vse, kar ni `Wallet → Retail`.
+- `KIND 30889` objavljen z istim formatom kot v `update-wallet-notes`, da ohranimo v1.1 shemo (7. polje `freeze_status`).
 
-```ts
-const trusted = getTrustedPubkeys();
-const trustedAuthors = trusted.size > 0 ? [...trusted] : undefined;
+## Datoteke
 
-const baseFilter87003: Filter = { kinds: [87003], limit: 1000 };
-const baseFilter87009: Filter = { kinds: [87009], limit: 1000 };
-if (trustedAuthors) {
-  baseFilter87003.authors = trustedAuthors;
-  baseFilter87009.authors = trustedAuthors;
-}
-
-const [fetched87003, fetched87009] = await Promise.all([
-  pool.querySync(relaysToUse, baseFilter87003),
-  pool.querySync(relaysToUse, baseFilter87009),
-]);
-```
-
-Client-side `filtered87003` / `filtered87009` ostane nespremenjen kot dvojna obramba.
-
-## Validacija po implementaciji
-
-1. Osveži landing → console mora prikazati `Trusted filter: 87003 N → N` (skoraj brez razlike, ker rele že filtrira).
-2. Tabela "Unregistered Lana events from Nostr relays" mora pokazati naše stare aprilske evente (~82 v bazi).
-3. Spam pubkey `080936…26b427` se ne pojavi.
-
-## Opomba glede sveže aktivnosti
-
-Cron `kind-cron-87003-monitoring-unregistered-coins` v zadnjih 25 dneh ni objavil nobenega novega 87003 eventa, ker `unregistered_lana_events` v tabeli ni novih. To je ločeno vprašanje — ko bo cron spet zaznal neregistrirano LANO, se bo objavil normalno (s pravilnim `UnregisteredAmountLatoshis` tagom, ki je bil že popravljen).
+- nov: `supabase/functions/update-wallet-type/index.ts`
+- spremenjen: `src/components/WalletCard.tsx`
+- spremenjen: `src/pages/Wallets.tsx`

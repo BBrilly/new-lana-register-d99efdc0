@@ -2,9 +2,19 @@ import { Wallet } from "@/types/wallet";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle, Info, Trash2, Wallet as WalletIcon, Copy, Check, ExternalLink, Package, Pencil, X, Loader2, Snowflake } from "lucide-react";
+import { AlertCircle, CheckCircle, Info, Trash2, Wallet as WalletIcon, Copy, Check, ExternalLink, Package, Pencil, X, Loader2, Snowflake, Store } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -15,17 +25,33 @@ interface WalletCardProps {
   wallet: Wallet;
   onDelete: (id: string) => Promise<void>;
   onUpdateNotes?: (id: string, notes: string) => Promise<void>;
+  onConvertToRetail?: (id: string) => Promise<void>;
   userCurrency: string;
   fxRates: { EUR: number; GBP: number; USD: number } | null;
 }
 
-const WalletCard = ({ wallet, onDelete, onUpdateNotes, userCurrency, fxRates }: WalletCardProps) => {
+const WalletCard = ({ wallet, onDelete, onUpdateNotes, onConvertToRetail, userCurrency, fxRates }: WalletCardProps) => {
   const [copied, setCopied] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState(wallet.description);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const navigate = useNavigate();
+
+  const handleConvert = async () => {
+    if (!onConvertToRetail) return;
+    setIsConverting(true);
+    try {
+      await onConvertToRetail(wallet.id);
+      setShowConvertDialog(false);
+    } catch {
+      // toast handled in parent
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   const handleSaveNotes = async () => {
     if (!onUpdateNotes) return;
@@ -213,6 +239,17 @@ const WalletCard = ({ wallet, onDelete, onUpdateNotes, userCurrency, fxRates }: 
               <ExternalLink className="h-4 w-4" />
               Transactions
             </Button>
+            {onConvertToRetail && wallet.type === "Wallet" && !isFrozen && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowConvertDialog(true)}
+                className="gap-2 text-xs sm:text-sm"
+              >
+                <Store className="h-4 w-4" />
+                Convert to Retail
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
@@ -347,6 +384,26 @@ const WalletCard = ({ wallet, onDelete, onUpdateNotes, userCurrency, fxRates }: 
             setShowDeleteDialog(false);
           }}
         />
+      )}
+
+      {onConvertToRetail && (
+        <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Convert wallet to Retail?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This wallet will be permanently changed from <strong>Wallet</strong> to <strong>Retail</strong>.
+                This action is <strong>one-way</strong> — Retail wallets cannot be converted back. The updated wallet list will be re-published to Nostr (KIND 30889).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isConverting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={(e) => { e.preventDefault(); handleConvert(); }} disabled={isConverting}>
+                {isConverting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Converting...</> : "Convert to Retail"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </Card>
   );
