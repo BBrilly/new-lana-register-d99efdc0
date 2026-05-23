@@ -21,6 +21,7 @@ import FrozenWalletsPage from "./pages/FrozenWalletsPage";
 import ResolveMaxCap from "./pages/ResolveMaxCap";
 import PublicApiPage from "./pages/PublicApiPage";
 import UsersAggregatedPage from "./pages/UsersAggregatedPage";
+import LanaholdersPage from "./pages/LanaholdersPage";
 
 const queryClient = new QueryClient();
 
