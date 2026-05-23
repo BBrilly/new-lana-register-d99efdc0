@@ -49,6 +49,7 @@ const App = () => (
           <Route path="/wallets/resolve-max-cap" element={<ResolveMaxCap />} />
           <Route path="/public-api" element={<PublicApiPage />} />
           <Route path="/users-aggregated" element={<UsersAggregatedPage />} />
+          <Route path="/lanaholders" element={<LanaholdersPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
