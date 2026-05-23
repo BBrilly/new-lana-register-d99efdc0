@@ -1,12 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity } from "lucide-react";
+import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity, Crown } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
   { path: "/all-wallets", label: "All Wallets", icon: Wallet },
   { path: "/users-aggregated", label: "Users Aggregated", icon: Users },
+  { path: "/lanaholders", label: "Lanaholders", icon: Crown },
   { path: "/knights", label: "Knights", icon: Shield },
   { path: "/lanapays", label: "LanaPays.Us", icon: CreditCard },
   { path: "/lana-discount", label: "Lana.Discount", icon: Tag },
