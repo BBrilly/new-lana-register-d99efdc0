@@ -107,7 +107,7 @@ const RetailWalletsPage = () => {
                     groups.map((g, idx) => {
                       const isOpen = !!expanded[g.key];
                       return (
-                        <>
+                        <Fragment key={g.key}>
                           <TableRow
                             key={g.key}
                             className={cn("cursor-pointer", g.anyFrozen && "bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/30 dark:hover:bg-sky-950/50")}
