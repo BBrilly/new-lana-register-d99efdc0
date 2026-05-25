@@ -1,11 +1,12 @@
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Snowflake, Lock, ArrowLeft, Flame } from "lucide-react";
+import { Snowflake, Lock, ArrowLeft, Flame, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import FreezeManager from "@/components/FreezeManager";
 import FrozenAccountsTab from "@/components/FrozenAccountsTab";
 import OverLimitHoldersTab from "@/components/OverLimitHoldersTab";
+import RetailHoldersTab from "@/components/RetailHoldersTab";
 
 const AdminFreezePage = () => {
   return (
@@ -41,6 +42,10 @@ const AdminFreezePage = () => {
               <Flame className="h-4 w-4" />
               Over Limit
             </TabsTrigger>
+            <TabsTrigger value="retail" className="flex items-center gap-1">
+              <Store className="h-4 w-4" />
+              Retail
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="freeze" className="space-y-4">
@@ -53,6 +58,10 @@ const AdminFreezePage = () => {
 
           <TabsContent value="over-limit" className="space-y-4">
             <OverLimitHoldersTab />
+          </TabsContent>
+
+          <TabsContent value="retail" className="space-y-4">
+            <RetailHoldersTab />
           </TabsContent>
         </Tabs>
       </div>
