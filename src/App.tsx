@@ -23,6 +23,7 @@ import PublicApiPage from "./pages/PublicApiPage";
 import UsersAggregatedPage from "./pages/UsersAggregatedPage";
 import LanaholdersPage from "./pages/LanaholdersPage";
 import RetailWalletsPage from "./pages/RetailWalletsPage";
+import AdminFreezePage from "./pages/AdminFreezePage";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/wallets/:walletId/consolidate" element={<WalletConsolidate />} />
           <Route path="/send-to-register" element={<SendToRegister />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin/freeze" element={<AdminFreezePage />} />
           <Route path="/api-docs" element={<ApiDocs />} />
           <Route path="/all-wallets" element={<AllWalletsPage />} />
           <Route path="/knights" element={<KnightsPage />} />
