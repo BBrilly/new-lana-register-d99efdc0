@@ -102,6 +102,9 @@ const FreezeManager = () => {
     { value: "frozen_max_cap", label: "Maximum Cap Exceeded", description: "Frozen due to maximum balance cap exceeded" },
     { value: "frozen_too_wild", label: "Suspicious Activity", description: "Frozen due to irregular or suspicious activity" },
     { value: "frozen_unreg_Lanas", label: "Unregistered Lanas Exceeded", description: "Frozen due to receiving unregistered LANA exceeding threshold" },
+    { value: "frozen_lanapays_outdated", label: "Out-dated Wallet for LanaPays.Us", description: "Frozen because LanaPays.Us wallet was created more than 2 splits ago" },
+    { value: "frozen_retail_unallowed", label: "Retail Wallet — un-allowed transactions", description: "Frozen due to un-allowed transactions on a Retail wallet" },
+    { value: "frozen_retail_over_limit", label: "Retail Wallet — over the Limit", description: "Frozen because Retail wallet exceeded the allowed limit" },
   ];
 
   const handleSearch = async () => {

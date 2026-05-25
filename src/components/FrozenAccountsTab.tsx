@@ -16,6 +16,9 @@ const FREEZE_CODES = [
   { value: "frozen_max_cap", label: "Maximum Cap Exceeded" },
   { value: "frozen_too_wild", label: "Suspicious Activity" },
   { value: "frozen_unreg_Lanas", label: "Unreg. Lanas Exceeded" },
+  { value: "frozen_lanapays_outdated", label: "Out-dated LanaPays.Us" },
+  { value: "frozen_retail_unallowed", label: "Retail — un-allowed TX" },
+  { value: "frozen_retail_over_limit", label: "Retail — over the Limit" },
 ];
 
 const FREEZE_LABELS: Record<string, string> = {
@@ -23,6 +26,9 @@ const FREEZE_LABELS: Record<string, string> = {
   frozen_max_cap: "Max Cap Exceeded",
   frozen_too_wild: "Suspicious Activity",
   frozen_unreg_Lanas: "Unreg. Lanas Exceeded",
+  frozen_lanapays_outdated: "Out-dated LanaPays.Us",
+  frozen_retail_unallowed: "Retail — un-allowed TX",
+  frozen_retail_over_limit: "Retail — over the Limit",
 };
 
 interface FrozenWallet {
