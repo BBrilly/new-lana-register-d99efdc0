@@ -26,6 +26,7 @@ const FREEZE_CODES = [
 interface Holder {
   key: string;
   name: string;
+  realName: string | null;
   nostrHexId: string | null;
   totalBalance: number;
   walletCount: number;
@@ -49,6 +50,7 @@ const Lana8WonderHoldersTab = () => {
       if (!map.has(key)) {
         map.set(key, {
           key, name,
+          realName: w.name ?? null,
           nostrHexId: w.nostr_hex_id ?? null,
           totalBalance: 0, walletCount: 0, frozenCount: 0, wallets: [],
         });
@@ -65,7 +67,11 @@ const Lana8WonderHoldersTab = () => {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return holders;
-    return holders.filter(h => h.name.toLowerCase().includes(q));
+    return holders.filter(h =>
+      h.name.toLowerCase().includes(q) ||
+      (h.realName?.toLowerCase().includes(q) ?? false) ||
+      (h.nostrHexId?.toLowerCase().includes(q) ?? false)
+    );
   }, [holders, search]);
 
   const eurRate = fxRates?.EUR ?? 0;
