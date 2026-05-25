@@ -205,17 +205,22 @@ const Login = () => {
               WIF Authentication
             </CardTitle>
             <CardDescription>
-              Enter your LANA WIF private key to access the dashboard
+              Enter your LANA WIF private key — both formats are supported:
+              <span className="block mt-1 text-xs">
+                • <b>Staking</b> (preferred): starts with <code className="font-mono">T</code> · 52 chars · compressed
+                <br />
+                • <b>Dominate</b>: starts with <code className="font-mono">6</code> · 51 chars · uncompressed
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="wif">WIF Private Key</Label>
+                <Label htmlFor="wif">WIF Private Key (T… or 6…)</Label>
                 <Input
                   id="wif"
                   type="password"
-                  placeholder="Enter your WIF key"
+                  placeholder="T… (Staking) or 6… (Dominate)"
                   value={wifKey}
                   onChange={(e) => setWifKey(e.target.value)}
                   disabled={isLoading || isScanning}
