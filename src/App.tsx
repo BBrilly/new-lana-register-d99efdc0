@@ -22,6 +22,7 @@ import ResolveMaxCap from "./pages/ResolveMaxCap";
 import PublicApiPage from "./pages/PublicApiPage";
 import UsersAggregatedPage from "./pages/UsersAggregatedPage";
 import LanaholdersPage from "./pages/LanaholdersPage";
+import RetailWalletsPage from "./pages/RetailWalletsPage";
 
 const queryClient = new QueryClient();
 
