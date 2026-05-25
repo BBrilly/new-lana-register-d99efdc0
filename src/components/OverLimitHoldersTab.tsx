@@ -121,7 +121,7 @@ const OverLimitHoldersTab = () => {
           </CardTitle>
           <CardDescription>
             Holders ranked by total LANA across <strong>Main Wallet</strong> and <strong>Wallet</strong> types.
-            Limit from KIND 38888: <strong>{limit != null ? `${fmtLana(limit)} LANA` : "—"}</strong>
+            Max cap from KIND 38888 (<code>max_cap_lanas_on_split</code>): <strong>{limit != null ? `${fmtLana(limit)} LANA` : "—"}</strong>
             {eurRate > 0 && limit != null && <> (≈ €{fmtEur(limit * eurRate)})</>}
           </CardDescription>
         </CardHeader>
