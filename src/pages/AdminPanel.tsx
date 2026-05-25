@@ -212,13 +212,11 @@ const AdminPanel = () => {
               <Key className="h-4 w-4" />
               API Keys
             </TabsTrigger>
-            <TabsTrigger value="freeze" className="flex items-center gap-1">
-              <Snowflake className="h-4 w-4" />
-              Freeze
-            </TabsTrigger>
-            <TabsTrigger value="frozen-accounts" className="flex items-center gap-1">
-              <Lock className="h-4 w-4" />
-              Frozen Accounts
+            <TabsTrigger value="freeze-link" asChild>
+              <Link to="/admin/freeze" className="flex items-center gap-1">
+                <Snowflake className="h-4 w-4" />
+                Freeze
+              </Link>
             </TabsTrigger>
             <TabsTrigger value="max-cap" className="flex items-center gap-1">
               <BarChart3 className="h-4 w-4" />
