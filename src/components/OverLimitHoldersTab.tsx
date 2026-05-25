@@ -18,6 +18,9 @@ const FREEZE_CODES = [
   { value: "frozen_l8w", label: "Late Wallet Registration" },
   { value: "frozen_too_wild", label: "Suspicious Activity" },
   { value: "frozen_unreg_Lanas", label: "Unregistered Lanas Exceeded" },
+  { value: "frozen_lanapays_outdated", label: "Out-dated Wallet for LanaPays.Us" },
+  { value: "frozen_retail_unallowed", label: "Retail Wallet — un-allowed transactions" },
+  { value: "frozen_retail_over_limit", label: "Retail Wallet — over the Limit" },
 ];
 
 interface Holder {

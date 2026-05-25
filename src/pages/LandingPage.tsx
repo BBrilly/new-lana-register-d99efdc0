@@ -44,6 +44,9 @@ const FREEZE_LABELS: Record<string, string> = {
   frozen_max_cap: "Max Cap Exceeded",
   frozen_too_wild: "Suspicious Activity",
   frozen_unreg_Lanas: "Unreg. Lanas Exceeded",
+  frozen_lanapays_outdated: "Out-dated LanaPays.Us",
+  frozen_retail_unallowed: "Retail — un-allowed TX",
+  frozen_retail_over_limit: "Retail — over the Limit",
 };
 
 const LandingPage = () => {
