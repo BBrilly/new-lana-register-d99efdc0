@@ -364,13 +364,6 @@ const AdminPanel = () => {
             <ApiKeysManager />
           </TabsContent>
 
-          <TabsContent value="freeze" className="space-y-4">
-            <FreezeManager />
-          </TabsContent>
-
-          <TabsContent value="frozen-accounts" className="space-y-4">
-            <FrozenAccountsTab />
-          </TabsContent>
 
           <TabsContent value="max-cap" className="space-y-4">
             <MaxCapFreezeManager />
