@@ -51,6 +51,7 @@ const App = () => (
           <Route path="/public-api" element={<PublicApiPage />} />
           <Route path="/users-aggregated" element={<UsersAggregatedPage />} />
           <Route path="/lanaholders" element={<LanaholdersPage />} />
+          <Route path="/retail-wallets" element={<RetailWalletsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
