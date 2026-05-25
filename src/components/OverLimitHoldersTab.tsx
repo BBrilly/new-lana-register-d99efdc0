@@ -42,12 +42,12 @@ const OverLimitHoldersTab = () => {
   useEffect(() => {
     supabase
       .from("system_parameters")
-      .select("freeze_lana_account_above")
+      .select("max_cap_lanas_on_split")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        const v = data?.freeze_lana_account_above;
+        const v = data?.max_cap_lanas_on_split;
         if (v) setLimit(parseFloat(v));
       });
   }, []);
@@ -121,7 +121,7 @@ const OverLimitHoldersTab = () => {
           </CardTitle>
           <CardDescription>
             Holders ranked by total LANA across <strong>Main Wallet</strong> and <strong>Wallet</strong> types.
-            Limit from KIND 38888: <strong>{limit != null ? `${fmtLana(limit)} LANA` : "—"}</strong>
+            Max cap from KIND 38888 (<code>max_cap_lanas_on_split</code>): <strong>{limit != null ? `${fmtLana(limit)} LANA` : "—"}</strong>
             {eurRate > 0 && limit != null && <> (≈ €{fmtEur(limit * eurRate)})</>}
           </CardDescription>
         </CardHeader>
