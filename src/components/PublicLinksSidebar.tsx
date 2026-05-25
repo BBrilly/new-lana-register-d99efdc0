@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity, Crown } from "lucide-react";
+import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity, Crown, Store } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
