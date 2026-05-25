@@ -52,6 +52,10 @@ const AdminFreezePage = () => {
               <WalletIcon className="h-4 w-4" />
               LanaPays.Us
             </TabsTrigger>
+            <TabsTrigger value="lana8wonder" className="flex items-center gap-1">
+              <Sparkles className="h-4 w-4" />
+              Lana8Wonder
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="freeze" className="space-y-4">
