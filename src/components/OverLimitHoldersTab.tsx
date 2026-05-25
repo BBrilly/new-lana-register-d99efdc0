@@ -42,12 +42,12 @@ const OverLimitHoldersTab = () => {
   useEffect(() => {
     supabase
       .from("system_parameters")
-      .select("freeze_lana_account_above")
+      .select("max_cap_lanas_on_split")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {
-        const v = data?.freeze_lana_account_above;
+        const v = data?.max_cap_lanas_on_split;
         if (v) setLimit(parseFloat(v));
       });
   }, []);
