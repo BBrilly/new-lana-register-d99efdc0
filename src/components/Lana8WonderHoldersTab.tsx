@@ -50,6 +50,7 @@ const Lana8WonderHoldersTab = () => {
       if (!map.has(key)) {
         map.set(key, {
           key, name,
+          realName: w.name ?? null,
           nostrHexId: w.nostr_hex_id ?? null,
           totalBalance: 0, walletCount: 0, frozenCount: 0, wallets: [],
         });
