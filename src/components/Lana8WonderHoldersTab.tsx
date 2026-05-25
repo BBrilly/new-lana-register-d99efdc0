@@ -67,7 +67,11 @@ const Lana8WonderHoldersTab = () => {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return holders;
-    return holders.filter(h => h.name.toLowerCase().includes(q));
+    return holders.filter(h =>
+      h.name.toLowerCase().includes(q) ||
+      (h.realName?.toLowerCase().includes(q) ?? false) ||
+      (h.nostrHexId?.toLowerCase().includes(q) ?? false)
+    );
   }, [holders, search]);
 
   const eurRate = fxRates?.EUR ?? 0;
