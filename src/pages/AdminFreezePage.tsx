@@ -1,6 +1,6 @@
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Snowflake, Lock, ArrowLeft, Flame, Store, Wallet as WalletIcon } from "lucide-react";
+import { Snowflake, Lock, ArrowLeft, Flame, Store, Wallet as WalletIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import FreezeManager from "@/components/FreezeManager";
@@ -8,6 +8,7 @@ import FrozenAccountsTab from "@/components/FrozenAccountsTab";
 import OverLimitHoldersTab from "@/components/OverLimitHoldersTab";
 import RetailHoldersTab from "@/components/RetailHoldersTab";
 import LanaPaysHoldersTab from "@/components/LanaPaysHoldersTab";
+import Lana8WonderHoldersTab from "@/components/Lana8WonderHoldersTab";
 
 const AdminFreezePage = () => {
   return (
@@ -51,6 +52,10 @@ const AdminFreezePage = () => {
               <WalletIcon className="h-4 w-4" />
               LanaPays.Us
             </TabsTrigger>
+            <TabsTrigger value="lana8wonder" className="flex items-center gap-1">
+              <Sparkles className="h-4 w-4" />
+              Lana8Wonder
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="freeze" className="space-y-4">
@@ -71,6 +76,10 @@ const AdminFreezePage = () => {
 
           <TabsContent value="lanapays" className="space-y-4">
             <LanaPaysHoldersTab />
+          </TabsContent>
+
+          <TabsContent value="lana8wonder" className="space-y-4">
+            <Lana8WonderHoldersTab />
           </TabsContent>
         </Tabs>
       </div>
