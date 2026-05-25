@@ -23,6 +23,7 @@ import PublicApiPage from "./pages/PublicApiPage";
 import UsersAggregatedPage from "./pages/UsersAggregatedPage";
 import LanaholdersPage from "./pages/LanaholdersPage";
 import RetailWalletsPage from "./pages/RetailWalletsPage";
+import AdminFreezePage from "./pages/AdminFreezePage";
 
 const queryClient = new QueryClient();
 
