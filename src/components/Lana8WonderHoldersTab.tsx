@@ -26,6 +26,7 @@ const FREEZE_CODES = [
 interface Holder {
   key: string;
   name: string;
+  realName: string | null;
   nostrHexId: string | null;
   totalBalance: number;
   walletCount: number;
