@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, RefreshCw, Wallet, TrendingUp, Key, Snowflake, Lock, BarChart3, UserPlus } from "lucide-react";
+import { Shield, RefreshCw, Wallet, TrendingUp, Key, Snowflake, BarChart3, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import StatCard from "@/components/StatCard";
 import ApiKeysManager from "@/components/ApiKeysManager";
-import FreezeManager from "@/components/FreezeManager";
-import FrozenAccountsTab from "@/components/FrozenAccountsTab";
 import MaxCapFreezeManager from "@/components/MaxCapFreezeManager";
 import AdminRegisterWallet from "@/components/AdminRegisterWallet";
 
