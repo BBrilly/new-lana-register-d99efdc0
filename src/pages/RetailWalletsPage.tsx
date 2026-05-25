@@ -170,7 +170,7 @@ const RetailWalletsPage = () => {
                               </TableCell>
                             </TableRow>
                           ))}
-                        </>
+                        </Fragment>
                       );
                     })
                   )}
