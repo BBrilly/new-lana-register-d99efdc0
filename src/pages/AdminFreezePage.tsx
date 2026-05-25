@@ -1,6 +1,6 @@
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Snowflake, Lock, ArrowLeft, Flame, Store, Wallet as WalletIcon } from "lucide-react";
+import { Snowflake, Lock, ArrowLeft, Flame, Store, Wallet as WalletIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import FreezeManager from "@/components/FreezeManager";
@@ -8,6 +8,7 @@ import FrozenAccountsTab from "@/components/FrozenAccountsTab";
 import OverLimitHoldersTab from "@/components/OverLimitHoldersTab";
 import RetailHoldersTab from "@/components/RetailHoldersTab";
 import LanaPaysHoldersTab from "@/components/LanaPaysHoldersTab";
+import Lana8WonderHoldersTab from "@/components/Lana8WonderHoldersTab";
 
 const AdminFreezePage = () => {
   return (
