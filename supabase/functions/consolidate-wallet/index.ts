@@ -630,7 +630,7 @@ serve(async (req) => {
       throw new Error('Insufficient funds to cover transaction fee');
     }
     
-    // Build and sign transaction
+    // Build and sign transaction — use the pubkey type matching the sender address
     const signedTx = await buildSignedTx(
       selected_utxos,
       private_key,
@@ -638,7 +638,8 @@ serve(async (req) => {
       amountToSend,
       fee,
       sender_address,
-      servers
+      servers,
+      matchesCompressed
     );
     
     console.log('✍️ Transaction signed');
