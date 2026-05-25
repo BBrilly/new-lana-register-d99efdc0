@@ -391,7 +391,8 @@ async function buildSignedTx(
   totalAmount: number,
   fee: number,
   changeAddress: string,
-  servers: any[]
+  servers: any[],
+  useCompressedPubKey?: boolean
 ) {
   console.log('🔧 Building consolidation transaction...');
   console.log(`📊 Using ${selectedUTXOs.length} UTXOs`);
@@ -403,13 +404,16 @@ async function buildSignedTx(
     console.log(`💰 Total input value: ${totalValue} lanoshis (${(totalValue / 100000000).toFixed(8)} LANA)`);
     console.log(`💸 Transaction: Amount=${totalAmount}, Fee=${fee}, Change=${totalValue - totalAmount - fee}`);
     
-    // Decode WIF and detect compression to use correct public key type
-    const { privateKeyHex, isCompressed } = decodeWifKey(privateKeyWIF);
+    // Decode WIF (we use the 32-byte private key for signing)
+    const { privateKeyHex, isCompressed: wifIsCompressed } = decodeWifKey(privateKeyWIF);
+    // The public key format MUST match the address being spent (scriptPubKey),
+    // not the WIF compression flag. Caller passes useCompressedPubKey when known.
+    const isCompressed = useCompressedPubKey ?? wifIsCompressed;
     const publicKey = isCompressed 
       ? privateKeyToCompressedPublicKey(privateKeyHex)
       : privateKeyToUncompressedPublicKey(privateKeyHex);
     
-    console.log(`🔑 Using ${isCompressed ? 'compressed (33-byte)' : 'uncompressed (65-byte)'} public key`);
+    console.log(`🔑 Using ${isCompressed ? 'compressed (33-byte)' : 'uncompressed (65-byte)'} public key (matches sender address)`);
     
     // Build recipient output
     const outputs = [];
