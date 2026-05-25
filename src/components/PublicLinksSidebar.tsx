@@ -10,6 +10,7 @@ const LINKS = [
   { path: "/lanaholders", label: "Lanaholders", icon: Crown },
   { path: "/knights", label: "Knights", icon: Shield },
   { path: "/lanapays", label: "LanaPays.Us", icon: CreditCard },
+  { path: "/retail-wallets", label: "Retail Wallets", icon: Store },
   { path: "/lana-discount", label: "Lana.Discount", icon: Tag },
   { path: "/frozen-wallets", label: "Frozen Wallets", icon: Snowflake },
   { path: "/public-api", label: "Public Data", icon: Globe },
