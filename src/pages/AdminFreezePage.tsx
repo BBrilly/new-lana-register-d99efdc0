@@ -77,6 +77,10 @@ const AdminFreezePage = () => {
           <TabsContent value="lanapays" className="space-y-4">
             <LanaPaysHoldersTab />
           </TabsContent>
+
+          <TabsContent value="lana8wonder" className="space-y-4">
+            <Lana8WonderHoldersTab />
+          </TabsContent>
         </Tabs>
       </div>
     </Layout>
