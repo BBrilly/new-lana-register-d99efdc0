@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useAddressBalances } from "@/hooks/useAddressBalances";
 
 const FREEZE_LABELS: Record<string, string> = {
   frozen_l8w: "Late Registration",
@@ -79,6 +80,9 @@ const AdminDeleteFrozenTab = () => {
         }));
     },
   });
+
+  const addressList = (frozenWallets || []).map((w) => w.wallet_id);
+  const { data: balanceMap, isLoading: balancesLoading } = useAddressBalances(addressList, "admin-delete-frozen");
 
   const openConfirm = (w: FrozenWallet) => {
     setTarget(w);
@@ -145,6 +149,7 @@ const AdminDeleteFrozenTab = () => {
                     <TableHead>Owner</TableHead>
                     <TableHead>Wallet Type</TableHead>
                     <TableHead>Address</TableHead>
+                    <TableHead className="text-right">Balance (LANA)</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -161,6 +166,15 @@ const AdminDeleteFrozenTab = () => {
                       </TableCell>
                       <TableCell className="font-mono text-xs break-all">
                         {w.wallet_id || "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">
+                        {balancesLoading && !balanceMap ? (
+                          <span className="text-muted-foreground">…</span>
+                        ) : w.wallet_id && balanceMap?.has(w.wallet_id) ? (
+                          balanceMap.get(w.wallet_id)!.toFixed(2)
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="text-xs">

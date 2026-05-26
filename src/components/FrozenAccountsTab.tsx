@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAddressBalances } from "@/hooks/useAddressBalances";
 
 const FREEZE_CODES = [
   { value: "frozen_l8w", label: "Late Wallet Registration" },
@@ -87,6 +88,9 @@ const FrozenAccountsTab = () => {
       }));
     },
   });
+
+  const addressList = (frozenWallets || []).map((w) => w.wallet_id);
+  const { data: balanceMap, isLoading: balancesLoading } = useAddressBalances(addressList, "frozen-accounts");
 
   const handleRowClick = (wallet: FrozenWallet) => {
     setSelectedWallet(wallet);
@@ -175,6 +179,7 @@ const FrozenAccountsTab = () => {
                     <TableHead>Owner</TableHead>
                     <TableHead>Wallet Type</TableHead>
                     <TableHead>Wallet Address</TableHead>
+                    <TableHead className="text-right">Balance (LANA)</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -197,6 +202,15 @@ const FrozenAccountsTab = () => {
                         {wallet.wallet_id
                           ? `${wallet.wallet_id.slice(0, 8)}...${wallet.wallet_id.slice(-6)}`
                           : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">
+                        {balancesLoading && !balanceMap ? (
+                          <span className="text-muted-foreground">…</span>
+                        ) : wallet.wallet_id && balanceMap?.has(wallet.wallet_id) ? (
+                          balanceMap.get(wallet.wallet_id)!.toFixed(2)
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="text-xs">
