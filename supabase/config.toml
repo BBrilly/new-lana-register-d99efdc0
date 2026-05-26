@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.check]
 verify_jwt = false
+
+[functions.admin-delete-wallet]
+verify_jwt = false
