@@ -732,7 +732,7 @@ const LandingPage = () => {
   const knightsTotalBalance = useMemo(() => knightsWallets.reduce((sum, w) => sum + w.balance, 0), [knightsWallets]);
   const allWalletsTotalBalance = useMemo(() => allWallets.reduce((sum, w) => sum + w.balance, 0), [allWallets]);
 
-  // Total balance of ALL registered wallets (Knights + All Wallets + Lana8Wonder)
+  // Total balance of ALL registered wallets (Knights + All Wallets + Lana8Wonder + Retail)
   const totalRegisteredBalance = useMemo(() => {
     return walletBalances.reduce((sum, w) => sum + w.balance, 0);
   }, [walletBalances]);
