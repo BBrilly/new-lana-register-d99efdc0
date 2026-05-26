@@ -69,7 +69,10 @@ const AdminDeleteFrozenTab = () => {
         }
       }
       return all
-        .filter((w) => (w.wallet_type || "").toLowerCase() !== "main" && (w.wallet_type || "").toLowerCase() !== "main wallet")
+        .filter((w) => {
+          const t = (w.wallet_type || "").toLowerCase();
+          return t !== "main" && t !== "main wallet" && t !== "lana8wonder";
+        })
         .map((w): FrozenWallet => ({
           id: w.id,
           wallet_id: w.wallet_id,
