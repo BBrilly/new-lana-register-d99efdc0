@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useAddressBalances } from "@/hooks/useAddressBalances";
 
 const FREEZE_LABELS: Record<string, string> = {
   frozen_l8w: "Late Registration",
@@ -79,6 +80,9 @@ const AdminDeleteFrozenTab = () => {
         }));
     },
   });
+
+  const addressList = (frozenWallets || []).map((w) => w.wallet_id);
+  const { data: balanceMap, isLoading: balancesLoading } = useAddressBalances(addressList, "admin-delete-frozen");
 
   const openConfirm = (w: FrozenWallet) => {
     setTarget(w);
