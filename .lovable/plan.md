@@ -1,47 +1,27 @@
-## Cilj
+## Problem
 
-Lastnik denarnice tipa **Wallet** lahko z enim klikom spremeni tip v **Retail**. Pretvorba je enosmerna in dovoljena izključno za vir `Wallet`. Vsi ostali tipi (Main Wallet, LanaPays.Us, Knights, Lana8Wonder, Retail, …) ostajajo nespremenljivi. Po uspešni spremembi se na releje ponovno objavi `KIND 30889` z osveženim seznamom denarnic uporabnika.
+Skupni "Total Registered Balance" na landing page (`/`) trenutno NE vključuje denarnic tipa **Retail**. V `src/pages/LandingPage.tsx` (vrstica 356) je hardcoded seznam wallet typov:
 
-## Spremembe
+```ts
+.in('wallet_type', ['Wallet', 'Main Wallet', 'Knights', 'Lana8Wonder', 'LanaPays.Us', 'Lana.Discount'])
+```
 
-### 1. Nova edge funkcija `update-wallet-type`
-Po vzoru `update-wallet-notes/index.ts`:
-- Vhod: `api_key`, `wallet_uuid`, `nostr_id_hex`, `new_wallet_type`.
-- Validacije:
-  - Aktivni API ključ.
-  - Denarnica obstaja in `main_wallet.nostr_hex_id === nostr_id_hex` (lastništvo).
-  - `wallet.wallet_type === 'Wallet'` in `new_wallet_type === 'Retail'` — sicer 403/400 z jasno napako (prepreči obraten prehod in vse druge prehode).
-- `UPDATE wallets SET wallet_type = 'Retail' WHERE id = wallet_uuid`.
-- Ponovna gradnja in objava `KIND 30889`:
-  - prebere `nostr_registrar_nsec` iz `app_settings`,
-  - prebere releje iz `system_parameters.relays` (flat array — glej core memory),
-  - povleče vse uporabnikove `wallets` (`wallet_id, wallet_type, notes, amount_unregistered_lanoshi, frozen`),
-  - sestavi `w` tag po obstoječi v1.1 shemi s 7 polji,
-  - `SimplePool.publish` z `Promise.race` timeouti (8s/objava, ~30s skupaj — glej core memory),
-  - tag `d` = `nostr_id_hex`, `status` = `"active"`.
-- Vrne `{ success, message }` brez razkrivanja internih napak.
+Manjka `'Retail'`. Zato `totalRegisteredBalance` (vrstica 736, prikaz vrstica 927) ne šteje Retail bilance.
 
-### 2. Frontend — `WalletCard.tsx`
-- Nov prop `onConvertToRetail?: (id: string) => Promise<void>`.
-- Akcija vidna **samo** če `wallet.type === 'Wallet'` (case-sensitive ujemanje, ker so DB vrednosti case-sensitive — glej core memory) in ni `frozen`.
-- Gumb v vrstici z akcijami: »Convert to Retail« s potrditvenim `AlertDialog`-om, ki opozori, da je dejanje enosmerno.
-- Po uspehu: toast + `refetch` (preko klica v parent handlerju).
+Isti manko je v `src/pages/AllWalletsPage.tsx` (vrstica 9) — tabela "All Wallets" prav tako izpušča Retail.
 
-### 3. `Wallets.tsx`
-- Dodan handler `handleConvertToRetail(id)`, ki kliče `supabase.functions.invoke('update-wallet-type', { body: { api_key, wallet_uuid, nostr_id_hex, new_wallet_type: 'Retail' } })`, prikaže toast in osveži seznam.
-- Preda `onConvertToRetail` v `WalletCard`.
+Opomba: `balance_snapshots` (cron v `blockchain-monitor`) **že** vključuje vse denarnice brez filtra, zato so zgodovinski grafi pravilni — popraviti je treba samo prikaz v realnem času na frontendu.
 
-### 4. Brez sprememb sheme
-DB ostaja enaka — `Retail` že obstaja v `wallet_types`. Migracije niso potrebne.
+## Rešitev
 
-## Tehnične opombe
+1. **`src/pages/LandingPage.tsx`** — v `fetchAllWallets` (vrstica 356) dodaj `'Retail'` v `.in('wallet_type', [...])`.
+2. **`src/pages/AllWalletsPage.tsx`** — v `WALLET_TYPES` konstanto (vrstica 9) dodaj `'Retail'`.
+3. Posodobi komentar na vrstici 735 v LandingPage, da omeni Retail.
 
-- `verify_jwt = false` za edge funkcijo (skladno z ostalimi tukaj uporabljenimi funkcijami, API ključ se validira v kodi).
-- Strogo strežniško preverjanje pravila prehoda — frontend zgolj skriva gumb, edge funkcija zavrne vse, kar ni `Wallet → Retail`.
-- `KIND 30889` objavljen z istim formatom kot v `update-wallet-notes`, da ohranimo v1.1 shemo (7. polje `freeze_status`).
+`LanaholdersPage` že vključuje Retail (vrstica 12), nič za popraviti.
 
-## Datoteke
+## Vpliv
 
-- nov: `supabase/functions/update-wallet-type/index.ts`
-- spremenjen: `src/components/WalletCard.tsx`
-- spremenjen: `src/pages/Wallets.tsx`
+- Skupna bilanca na landing page bo večja za znesek Retail denarnic.
+- Tabela "All Wallets" bo prikazala tudi Retail vrstice (z dodanim `wallet_type` stolpcem, ki je že podprt).
+- Vsi obstoječi tabi (Lana8Wonder, Knights, LanaPays.Us, Lana.Discount) ostanejo nedotaknjeni — filtrirajo po lastnem tipu.
