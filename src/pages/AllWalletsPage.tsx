@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { usePublicWalletBalances } from "@/hooks/usePublicWalletBalances";
 import PublicWalletTable from "@/components/PublicWalletTable";
 
-const WALLET_TYPES = ['Wallet', 'Main Wallet', 'Knights', 'LanaPays.Us', 'Lana.Discount'];
+const WALLET_TYPES = ['Wallet', 'Main Wallet', 'Knights', 'LanaPays.Us', 'Lana.Discount', 'Retail'];
 
 const AllWalletsPage = () => {
   const navigate = useNavigate();

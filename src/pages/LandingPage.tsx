@@ -353,7 +353,7 @@ const LandingPage = () => {
                 freeze_reason,
                 main_wallet:main_wallets(name, display_name)
               `)
-              .in('wallet_type', ['Wallet', 'Main Wallet', 'Knights', 'Lana8Wonder', 'LanaPays.Us', 'Lana.Discount'])
+              .in('wallet_type', ['Wallet', 'Main Wallet', 'Knights', 'Lana8Wonder', 'LanaPays.Us', 'Lana.Discount', 'Retail'])
               .range(offset, offset + PAGE_SIZE - 1);
             
             if (error) {
@@ -732,7 +732,7 @@ const LandingPage = () => {
   const knightsTotalBalance = useMemo(() => knightsWallets.reduce((sum, w) => sum + w.balance, 0), [knightsWallets]);
   const allWalletsTotalBalance = useMemo(() => allWallets.reduce((sum, w) => sum + w.balance, 0), [allWallets]);
 
-  // Total balance of ALL registered wallets (Knights + All Wallets + Lana8Wonder)
+  // Total balance of ALL registered wallets (Knights + All Wallets + Lana8Wonder + Retail)
   const totalRegisteredBalance = useMemo(() => {
     return walletBalances.reduce((sum, w) => sum + w.balance, 0);
   }, [walletBalances]);
