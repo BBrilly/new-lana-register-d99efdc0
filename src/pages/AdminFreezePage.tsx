@@ -1,6 +1,6 @@
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Snowflake, Lock, ArrowLeft, Flame, Store, Wallet as WalletIcon, Sparkles } from "lucide-react";
+import { Snowflake, Lock, ArrowLeft, Flame, Store, Wallet as WalletIcon, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import FreezeManager from "@/components/FreezeManager";
@@ -9,6 +9,7 @@ import OverLimitHoldersTab from "@/components/OverLimitHoldersTab";
 import RetailHoldersTab from "@/components/RetailHoldersTab";
 import LanaPaysHoldersTab from "@/components/LanaPaysHoldersTab";
 import Lana8WonderHoldersTab from "@/components/Lana8WonderHoldersTab";
+import AdminDeleteFrozenTab from "@/components/AdminDeleteFrozenTab";
 
 const AdminFreezePage = () => {
   return (
@@ -56,6 +57,10 @@ const AdminFreezePage = () => {
               <Sparkles className="h-4 w-4" />
               Lana8Wonder
             </TabsTrigger>
+            <TabsTrigger value="delete-frozen" className="flex items-center gap-1">
+              <Trash2 className="h-4 w-4" />
+              Delete Frozen
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="freeze" className="space-y-4">
@@ -80,6 +85,10 @@ const AdminFreezePage = () => {
 
           <TabsContent value="lana8wonder" className="space-y-4">
             <Lana8WonderHoldersTab />
+          </TabsContent>
+
+          <TabsContent value="delete-frozen" className="space-y-4">
+            <AdminDeleteFrozenTab />
           </TabsContent>
         </Tabs>
       </div>
