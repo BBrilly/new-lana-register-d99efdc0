@@ -133,14 +133,21 @@ const AdminDeleteMainWalletTab = () => {
     setDeleting(true);
     setLastSteps(null);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-delete-main-wallet", {
-        body: {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-main-wallet`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
           nostr_hex_id: mainWallet.nostr_hex_id,
           admin_auth_event: createAdminAuthEvent(mainWallet.nostr_hex_id),
-        },
+        }),
       });
+      const data = await response.json().catch(() => null);
       if (data?.steps) setLastSteps(data.steps);
-      if (error) throw new Error(data?.error || error.message || "Delete failed");
+      if (!response.ok) throw new Error(data?.error || `Delete failed (${response.status})`);
       if (!data?.success) throw new Error(data?.error || "Unknown error");
       toast.success("Main wallet deleted and KIND 30889 retracted from all relays");
       queryClient.invalidateQueries({ queryKey: ["frozen-wallets-admin-delete"] });
