@@ -270,6 +270,7 @@ const AdminDeleteMainWalletTab = () => {
               ))}
             </div>
           )}
+        </CardContent>
       </Card>
 
       <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep((s) => (s === 1 ? 0 : s))}>
