@@ -39,6 +39,12 @@ const AdminDeleteMainWalletTab = () => {
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
   const [deleting, setDeleting] = useState(false);
 
+  const MAIN_TYPES = ["main", "main wallet"];
+  const isMainEntry = (w: RelatedWallet) =>
+    MAIN_TYPES.includes((w.wallet_type || "").toLowerCase()) ||
+    (mainWallet?.wallet_id && w.wallet_id === mainWallet.wallet_id);
+  const otherWallets = related.filter((w) => !isMainEntry(w));
+
   const allAddresses = [
     mainWallet?.wallet_id,
     ...related.map((w) => w.wallet_id),
@@ -51,7 +57,7 @@ const AdminDeleteMainWalletTab = () => {
       : 0)
     : 0;
 
-  const canDelete = !!mainWallet && related.length === 0;
+  const canDelete = !!mainWallet && otherWallets.length === 0;
 
   const reset = () => {
     setMainWallet(null);
@@ -177,11 +183,14 @@ const AdminDeleteMainWalletTab = () => {
 
               <div>
                 <p className="text-sm font-medium mb-2">
-                  Other wallets: {related.length}
+                  Wallets in DB: {related.length}{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (other than main: {otherWallets.length})
+                  </span>
                 </p>
                 {related.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No other wallets — main wallet can be deleted.
+                    No wallet rows found.
                   </p>
                 ) : (
                   <Table>
@@ -194,28 +203,34 @@ const AdminDeleteMainWalletTab = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {related.map((w) => (
-                        <TableRow key={w.id}>
-                          <TableCell>
-                            <Badge variant="outline">{w.wallet_type}</Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs break-all">
-                            {w.wallet_id || "—"}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {w.wallet_id && balanceMap?.has(w.wallet_id)
-                              ? balanceMap.get(w.wallet_id)!.toFixed(2)
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {w.frozen ? (
-                              <Badge variant="secondary">Frozen</Badge>
-                            ) : (
-                              <Badge variant="outline">Active</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {related.map((w) => {
+                        const isMain = isMainEntry(w);
+                        return (
+                          <TableRow key={w.id} className={isMain ? "bg-muted/40" : ""}>
+                            <TableCell>
+                              <Badge variant={isMain ? "default" : "outline"}>
+                                {w.wallet_type}
+                                {isMain && " (main)"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs break-all">
+                              {w.wallet_id || "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {w.wallet_id && balanceMap?.has(w.wallet_id)
+                                ? balanceMap.get(w.wallet_id)!.toFixed(2)
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {w.frozen ? (
+                                <Badge variant="secondary">Frozen</Badge>
+                              ) : (
+                                <Badge variant="outline">Active</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -235,8 +250,8 @@ const AdminDeleteMainWalletTab = () => {
                 <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
                   <p className="text-foreground">
-                    Cannot delete: user still owns {related.length} other wallet(s).
-                    Delete those from the Frozen Wallets tab first.
+                    Cannot delete: user still owns {otherWallets.length} other wallet(s).
+                    Delete those from the Delete Frozen tab first.
                   </p>
                 </div>
               )}

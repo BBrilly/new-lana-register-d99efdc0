@@ -93,11 +93,19 @@ Deno.serve(async (req) => {
       .eq("main_wallet_id", mainWallet.id);
     if (wErr) throw wErr;
 
-    if ((relatedWallets || []).length > 0) {
+    const MAIN_TYPES = ["main", "main wallet"];
+    const isMainEntry = (w: any) =>
+      MAIN_TYPES.includes((w.wallet_type || "").toLowerCase()) ||
+      (mainWallet.wallet_id && w.wallet_id === mainWallet.wallet_id);
+
+    const mainEntries = (relatedWallets || []).filter(isMainEntry);
+    const otherWallets = (relatedWallets || []).filter((w) => !isMainEntry(w));
+
+    if (otherWallets.length > 0) {
       return new Response(JSON.stringify({
         success: false,
-        error: `User still owns ${relatedWallets!.length} other wallet(s). Delete those first.`,
-        wallets: relatedWallets,
+        error: `User still owns ${otherWallets.length} other wallet(s). Delete those first.`,
+        wallets: otherWallets,
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -131,6 +139,17 @@ Deno.serve(async (req) => {
       main_wallet_id: mainWallet.id,
       reason: `admin_deleted_main_wallet | admin_user: ${userData.user.id} | name: ${mainWallet.name || ""}`,
     });
+
+    // Delete the duplicated "Main Wallet" rows in `wallets` (same address as main_wallets)
+    if (mainEntries.length > 0) {
+      const ids = mainEntries.map((w: any) => w.id);
+      const { error: delWErr } = await supabase.from("wallets").delete().in("id", ids);
+      if (delWErr) {
+        console.warn(`[${correlationId}] Failed to delete main-entry wallet rows:`, delWErr.message);
+      } else {
+        console.log(`[${correlationId}] Deleted ${ids.length} main-entry wallet row(s)`);
+      }
+    }
 
     // Delete from main_wallets
     const { error: delMainErr } = await supabase.from("main_wallets").delete().eq("id", mainWallet.id);
