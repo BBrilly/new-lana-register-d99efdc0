@@ -140,6 +140,17 @@ Deno.serve(async (req) => {
       reason: `admin_deleted_main_wallet | admin_user: ${userData.user.id} | name: ${mainWallet.name || ""}`,
     });
 
+    // Delete the duplicated "Main Wallet" rows in `wallets` (same address as main_wallets)
+    if (mainEntries.length > 0) {
+      const ids = mainEntries.map((w: any) => w.id);
+      const { error: delWErr } = await supabase.from("wallets").delete().in("id", ids);
+      if (delWErr) {
+        console.warn(`[${correlationId}] Failed to delete main-entry wallet rows:`, delWErr.message);
+      } else {
+        console.log(`[${correlationId}] Deleted ${ids.length} main-entry wallet row(s)`);
+      }
+    }
+
     // Delete from main_wallets
     const { error: delMainErr } = await supabase.from("main_wallets").delete().eq("id", mainWallet.id);
     if (delMainErr) {
