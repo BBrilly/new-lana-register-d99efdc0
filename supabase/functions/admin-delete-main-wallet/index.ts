@@ -82,7 +82,16 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceKey);
     const ownerHex = nostr_hex_id.toLowerCase();
-    const adminHex = validateAdminAuthEvent(admin_auth_event, ownerHex);
+    let adminHex: string;
+    try {
+      adminHex = validateAdminAuthEvent(admin_auth_event, ownerHex);
+    } catch (authError) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: authError instanceof Error ? authError.message : "Invalid admin authorization",
+        steps,
+      }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const { data: adminRow, error: adminError } = await supabase
       .from("admin_users")
       .select("nostr_hex_id")
@@ -205,7 +214,7 @@ Deno.serve(async (req) => {
       wallet_type: "main_wallet",
       nostr_hex_id: ownerHex,
       main_wallet_id: mainWallet.id,
-      reason: `admin_deleted_main_wallet | admin_user: ${userData.user.id} | name: ${mainWallet.name || ""}`,
+      reason: `admin_deleted_main_wallet | admin_nostr_hex_id: ${adminHex} | name: ${mainWallet.name || ""}`,
     });
     if (archErr) {
       log(`✗ Archive failed: ${archErr.message}`);
