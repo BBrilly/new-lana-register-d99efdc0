@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SimplePool, finalizeEvent, getPublicKey } from "https://esm.sh/nostr-tools@2.7.0";
+import { SimplePool, finalizeEvent, getPublicKey, verifyEvent } from "https://esm.sh/nostr-tools@2.7.0";
 import { decode as nip19decode } from "https://esm.sh/nostr-tools@2.7.0/nip19";
 
 const corsHeaders = {
@@ -20,6 +20,25 @@ function hexToBytes(hex: string): Uint8Array {
 
 function createSignedEvent(kind: number, tags: string[][], content: string, privateKeyHex: string): any {
   return finalizeEvent({ kind, tags, content, created_at: Math.floor(Date.now() / 1000) }, hexToBytes(privateKeyHex));
+}
+
+function hasTag(event: any, key: string, value: string) {
+  return Array.isArray(event?.tags) && event.tags.some((tag: unknown) =>
+    Array.isArray(tag) && tag[0] === key && tag[1] === value
+  );
+}
+
+function validateAdminAuthEvent(event: any, targetNostrHexId: string): string {
+  if (!event || typeof event !== "object") throw new Error("Missing admin authorization event");
+  if (!verifyEvent(event)) throw new Error("Invalid admin authorization signature");
+  if (event.kind !== 27235) throw new Error("Invalid admin authorization event kind");
+  if (Math.abs(Math.floor(Date.now() / 1000) - Number(event.created_at || 0)) > 300) {
+    throw new Error("Admin authorization expired; please try again");
+  }
+  if (!hasTag(event, "action", "admin-delete-main-wallet") || !hasTag(event, "target", targetNostrHexId)) {
+    throw new Error("Admin authorization does not match this delete request");
+  }
+  return String(event.pubkey || "").toLowerCase();
 }
 
 /** Publish event to every relay; resolves to {ok:string[], failed:{url,err}[]} */
@@ -46,33 +65,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: "Missing Authorization header", steps }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceKey) {
+      return new Response(JSON.stringify({ success: false, error: "Server configuration error", steps }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid auth", steps }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: isAdmin } = await userClient.rpc("is_admin", { _user_id: userData.user.id });
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ success: false, error: "Admin privileges required", steps }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { nostr_hex_id } = await req.json();
+    const { nostr_hex_id, admin_auth_event } = await req.json();
     if (!nostr_hex_id || typeof nostr_hex_id !== "string" || !/^[0-9a-f]{64}$/i.test(nostr_hex_id)) {
       return new Response(JSON.stringify({ success: false, error: "Valid nostr_hex_id (64 hex chars) required", steps }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -81,7 +82,29 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceKey);
     const ownerHex = nostr_hex_id.toLowerCase();
+    let adminHex: string;
+    try {
+      adminHex = validateAdminAuthEvent(admin_auth_event, ownerHex);
+    } catch (authError) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: authError instanceof Error ? authError.message : "Invalid admin authorization",
+        steps,
+      }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: adminRow, error: adminError } = await supabase
+      .from("admin_users")
+      .select("nostr_hex_id")
+      .eq("nostr_hex_id", adminHex)
+      .maybeSingle();
+    if (adminError || !adminRow) {
+      return new Response(JSON.stringify({ success: false, error: "Admin privileges required", steps }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     log(`▶ Start admin-delete-main-wallet for ${ownerHex.substring(0, 12)}…`);
+    log(`✓ Admin authorized: ${adminHex.substring(0, 12)}…`);
 
     const { data: mainWallet, error: mwErr } = await supabase
       .from("main_wallets").select("*").eq("nostr_hex_id", ownerHex).maybeSingle();
@@ -191,7 +214,7 @@ Deno.serve(async (req) => {
       wallet_type: "main_wallet",
       nostr_hex_id: ownerHex,
       main_wallet_id: mainWallet.id,
-      reason: `admin_deleted_main_wallet | admin_user: ${userData.user.id} | name: ${mainWallet.name || ""}`,
+      reason: `admin_deleted_main_wallet | admin_nostr_hex_id: ${adminHex} | name: ${mainWallet.name || ""}`,
     });
     if (archErr) {
       log(`✗ Archive failed: ${archErr.message}`);

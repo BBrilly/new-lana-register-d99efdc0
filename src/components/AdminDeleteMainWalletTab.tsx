@@ -8,8 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Trash2, AlertTriangle, Loader2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAddressBalances } from "@/hooks/useAddressBalances";
+import { getAuthSession } from "@/utils/wifAuth";
+import { finalizeEvent } from "nostr-tools";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialog, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
@@ -60,6 +62,30 @@ const AdminDeleteMainWalletTab = () => {
 
   const canDelete = !!mainWallet && otherWallets.length === 0;
 
+  const hexToBytes = (hex: string) =>
+    new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
+
+  const createAdminAuthEvent = (targetNostrHexId: string) => {
+    const session = getAuthSession();
+    if (!session?.nostrHexId || !session?.nostrPrivateKey) {
+      throw new Error("Admin session not found. Please log in again.");
+    }
+
+    return finalizeEvent(
+      {
+        kind: 27235,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ["action", "admin-delete-main-wallet"],
+          ["target", targetNostrHexId],
+          ["admin", session.nostrHexId],
+        ],
+        content: `Authorize admin-delete-main-wallet for ${targetNostrHexId}`,
+      },
+      hexToBytes(session.nostrPrivateKey)
+    );
+  };
+
   const reset = () => {
     setMainWallet(null);
     setRelated([]);
@@ -107,11 +133,21 @@ const AdminDeleteMainWalletTab = () => {
     setDeleting(true);
     setLastSteps(null);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-delete-main-wallet", {
-        body: { nostr_hex_id: mainWallet.nostr_hex_id },
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-main-wallet`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          nostr_hex_id: mainWallet.nostr_hex_id,
+          admin_auth_event: createAdminAuthEvent(mainWallet.nostr_hex_id),
+        }),
       });
-      if (error) throw error;
+      const data = await response.json().catch(() => null);
       if (data?.steps) setLastSteps(data.steps);
+      if (!response.ok) throw new Error(data?.error || `Delete failed (${response.status})`);
       if (!data?.success) throw new Error(data?.error || "Unknown error");
       toast.success("Main wallet deleted and KIND 30889 retracted from all relays");
       queryClient.invalidateQueries({ queryKey: ["frozen-wallets-admin-delete"] });
