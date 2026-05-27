@@ -264,7 +264,7 @@ const AdminDeleteMainWalletTab = () => {
         </CardContent>
       </Card>
 
-      <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep(0)}>
+      <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep((s) => (s === 1 ? 0 : s))}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete main wallet?</AlertDialogTitle>
