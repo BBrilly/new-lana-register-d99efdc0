@@ -105,13 +105,15 @@ const AdminDeleteMainWalletTab = () => {
   const performDelete = async () => {
     if (!mainWallet) return;
     setDeleting(true);
+    setLastSteps(null);
     try {
       const { data, error } = await supabase.functions.invoke("admin-delete-main-wallet", {
         body: { nostr_hex_id: mainWallet.nostr_hex_id },
       });
       if (error) throw error;
+      if (data?.steps) setLastSteps(data.steps);
       if (!data?.success) throw new Error(data?.error || "Unknown error");
-      toast.success("Main wallet deleted and KIND 30889 retracted from relays");
+      toast.success("Main wallet deleted and KIND 30889 retracted from all relays");
       queryClient.invalidateQueries({ queryKey: ["frozen-wallets-admin-delete"] });
       reset();
       setHexInput("");
@@ -119,6 +121,7 @@ const AdminDeleteMainWalletTab = () => {
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Delete failed");
+      setConfirmStep(0);
     } finally {
       setDeleting(false);
     }
