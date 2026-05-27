@@ -38,6 +38,7 @@ const AdminDeleteMainWalletTab = () => {
   const [related, setRelated] = useState<RelatedWallet[]>([]);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
   const [deleting, setDeleting] = useState(false);
+  const [lastSteps, setLastSteps] = useState<string[] | null>(null);
 
   const MAIN_TYPES = ["main", "main wallet"];
   const isMainEntry = (w: RelatedWallet) =>
