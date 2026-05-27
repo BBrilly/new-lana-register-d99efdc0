@@ -273,59 +273,65 @@ const AdminDeleteMainWalletTab = () => {
         </CardContent>
       </Card>
 
-      <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep((s) => (s === 1 ? 0 : s))}>
+      <AlertDialog
+        open={confirmStep !== 0}
+        onOpenChange={(o) => { if (!o && !deleting) setConfirmStep(0); }}
+      >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete main wallet?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>
-                  You are about to delete the main wallet for{" "}
-                  <strong>{mainWallet?.display_name || mainWallet?.name}</strong>.
-                </p>
-                <p className="text-xs font-mono break-all text-muted-foreground">
-                  {mainWallet?.nostr_hex_id}
-                </p>
-                <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
-                  <p>
-                    A NIP-09 deletion event and tombstone KIND 30889 will be broadcast
-                    to all relays. The record is archived in <strong>deleted_wallets</strong>.
-                  </p>
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setConfirmStep(2)}>Yes, continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmStep === 2} onOpenChange={(o) => !o && !deleting && setConfirmStep(0)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Final confirmation</AlertDialogTitle>
-            <AlertDialogDescription>
-              This is <strong>irreversible</strong>. Confirm deletion of main wallet for{" "}
-              <span className="font-mono text-xs">{mainWallet?.nostr_hex_id.substring(0, 16)}…</span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              onClick={performDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</>
-              ) : (
-                "Yes, delete main wallet"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {confirmStep === 1 && (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete main wallet?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    <p>
+                      You are about to delete the main wallet for{" "}
+                      <strong>{mainWallet?.display_name || mainWallet?.name}</strong>.
+                    </p>
+                    <p className="text-xs font-mono break-all text-muted-foreground">
+                      {mainWallet?.nostr_hex_id}
+                    </p>
+                    <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+                      <p>
+                        A NIP-09 deletion event and tombstone KIND 30889 will be broadcast
+                        to all relays. The record is archived in <strong>deleted_wallets</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <Button variant="outline" onClick={() => setConfirmStep(0)}>Cancel</Button>
+                <Button onClick={() => setConfirmStep(2)}>Yes, continue</Button>
+              </AlertDialogFooter>
+            </>
+          )}
+          {confirmStep === 2 && (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive">Final confirmation</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This is <strong>irreversible</strong>. Confirm deletion of main wallet for{" "}
+                  <span className="font-mono text-xs">{mainWallet?.nostr_hex_id.substring(0, 16)}…</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <Button variant="outline" disabled={deleting} onClick={() => setConfirmStep(0)}>Cancel</Button>
+                <Button
+                  disabled={deleting}
+                  onClick={performDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</>
+                  ) : (
+                    "Yes, delete main wallet"
+                  )}
+                </Button>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </>
