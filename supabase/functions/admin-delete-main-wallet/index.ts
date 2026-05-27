@@ -93,11 +93,19 @@ Deno.serve(async (req) => {
       .eq("main_wallet_id", mainWallet.id);
     if (wErr) throw wErr;
 
-    if ((relatedWallets || []).length > 0) {
+    const MAIN_TYPES = ["main", "main wallet"];
+    const isMainEntry = (w: any) =>
+      MAIN_TYPES.includes((w.wallet_type || "").toLowerCase()) ||
+      (mainWallet.wallet_id && w.wallet_id === mainWallet.wallet_id);
+
+    const mainEntries = (relatedWallets || []).filter(isMainEntry);
+    const otherWallets = (relatedWallets || []).filter((w) => !isMainEntry(w));
+
+    if (otherWallets.length > 0) {
       return new Response(JSON.stringify({
         success: false,
-        error: `User still owns ${relatedWallets!.length} other wallet(s). Delete those first.`,
-        wallets: relatedWallets,
+        error: `User still owns ${otherWallets.length} other wallet(s). Delete those first.`,
+        wallets: otherWallets,
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
