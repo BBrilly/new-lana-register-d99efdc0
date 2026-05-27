@@ -261,7 +261,15 @@ const AdminDeleteMainWalletTab = () => {
               )}
             </div>
           )}
-        </CardContent>
+
+          {lastSteps && lastSteps.length > 0 && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs font-mono space-y-1">
+              <p className="font-sans font-medium text-foreground mb-2">Execution log:</p>
+              {lastSteps.map((s, i) => (
+                <div key={i} className="text-muted-foreground">{s}</div>
+              ))}
+            </div>
+          )}
       </Card>
 
       <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep((s) => (s === 1 ? 0 : s))}>
