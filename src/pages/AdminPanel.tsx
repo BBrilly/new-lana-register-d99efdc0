@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, RefreshCw, Wallet, TrendingUp, Key, Snowflake, BarChart3, UserPlus } from "lucide-react";
+import { Shield, RefreshCw, Wallet, TrendingUp, Key, Snowflake, BarChart3, UserPlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -14,6 +14,7 @@ import StatCard from "@/components/StatCard";
 import ApiKeysManager from "@/components/ApiKeysManager";
 import MaxCapFreezeManager from "@/components/MaxCapFreezeManager";
 import AdminRegisterWallet from "@/components/AdminRegisterWallet";
+import AdminDeleteMainWalletTab from "@/components/AdminDeleteMainWalletTab";
 
 interface UnregisteredEvent {
   id: string;
@@ -226,6 +227,10 @@ const AdminPanel = () => {
               <UserPlus className="h-4 w-4" />
               Register Wallet
             </TabsTrigger>
+            <TabsTrigger value="delete-main" className="flex items-center gap-1">
+              <Trash2 className="h-4 w-4" />
+              Delete Main
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="events" className="space-y-4">
@@ -371,6 +376,10 @@ const AdminPanel = () => {
 
           <TabsContent value="register-wallet" className="space-y-4">
             <AdminRegisterWallet />
+          </TabsContent>
+
+          <TabsContent value="delete-main" className="space-y-4">
+            <AdminDeleteMainWalletTab />
           </TabsContent>
         </Tabs>
       </div>
