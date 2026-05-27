@@ -11,7 +11,7 @@ import { useAddressBalances } from "@/hooks/useAddressBalances";
 import { getAuthSession } from "@/utils/wifAuth";
 import { finalizeEvent } from "nostr-tools";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialog, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
