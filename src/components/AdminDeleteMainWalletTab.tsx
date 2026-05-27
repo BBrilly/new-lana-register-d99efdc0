@@ -38,6 +38,7 @@ const AdminDeleteMainWalletTab = () => {
   const [related, setRelated] = useState<RelatedWallet[]>([]);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
   const [deleting, setDeleting] = useState(false);
+  const [lastSteps, setLastSteps] = useState<string[] | null>(null);
 
   const MAIN_TYPES = ["main", "main wallet"];
   const isMainEntry = (w: RelatedWallet) =>
@@ -104,13 +105,15 @@ const AdminDeleteMainWalletTab = () => {
   const performDelete = async () => {
     if (!mainWallet) return;
     setDeleting(true);
+    setLastSteps(null);
     try {
       const { data, error } = await supabase.functions.invoke("admin-delete-main-wallet", {
         body: { nostr_hex_id: mainWallet.nostr_hex_id },
       });
       if (error) throw error;
+      if (data?.steps) setLastSteps(data.steps);
       if (!data?.success) throw new Error(data?.error || "Unknown error");
-      toast.success("Main wallet deleted and KIND 30889 retracted from relays");
+      toast.success("Main wallet deleted and KIND 30889 retracted from all relays");
       queryClient.invalidateQueries({ queryKey: ["frozen-wallets-admin-delete"] });
       reset();
       setHexInput("");
@@ -118,6 +121,7 @@ const AdminDeleteMainWalletTab = () => {
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Delete failed");
+      setConfirmStep(0);
     } finally {
       setDeleting(false);
     }
@@ -257,10 +261,19 @@ const AdminDeleteMainWalletTab = () => {
               )}
             </div>
           )}
+
+          {lastSteps && lastSteps.length > 0 && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs font-mono space-y-1">
+              <p className="font-sans font-medium text-foreground mb-2">Execution log:</p>
+              {lastSteps.map((s, i) => (
+                <div key={i} className="text-muted-foreground">{s}</div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep(0)}>
+      <AlertDialog open={confirmStep === 1} onOpenChange={(o) => !o && setConfirmStep((s) => (s === 1 ? 0 : s))}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete main wallet?</AlertDialogTitle>
