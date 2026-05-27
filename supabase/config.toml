@@ -50,3 +50,7 @@ verify_jwt = false
 
 [functions.admin-delete-wallet]
 verify_jwt = false
+
+[functions.admin-delete-main-wallet]
+verify_jwt = false
+
