@@ -10,7 +10,6 @@ import RetailHoldersTab from "@/components/RetailHoldersTab";
 import LanaPaysHoldersTab from "@/components/LanaPaysHoldersTab";
 import Lana8WonderHoldersTab from "@/components/Lana8WonderHoldersTab";
 import AdminDeleteFrozenTab from "@/components/AdminDeleteFrozenTab";
-import AdminDeleteMainWalletTab from "@/components/AdminDeleteMainWalletTab";
 
 const AdminFreezePage = () => {
   return (
@@ -62,10 +61,6 @@ const AdminFreezePage = () => {
               <Trash2 className="h-4 w-4" />
               Delete Frozen
             </TabsTrigger>
-            <TabsTrigger value="delete-main" className="flex items-center gap-1">
-              <Trash2 className="h-4 w-4" />
-              Delete Main
-            </TabsTrigger>
 
           </TabsList>
 
@@ -95,10 +90,6 @@ const AdminFreezePage = () => {
 
           <TabsContent value="delete-frozen" className="space-y-4">
             <AdminDeleteFrozenTab />
-          </TabsContent>
-
-          <TabsContent value="delete-main" className="space-y-4">
-            <AdminDeleteMainWalletTab />
           </TabsContent>
 
         </Tabs>

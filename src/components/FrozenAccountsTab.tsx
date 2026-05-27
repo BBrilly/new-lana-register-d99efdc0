@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
+import { Lock, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,6 +50,19 @@ const FrozenAccountsTab = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newReason, setNewReason] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [copiedHex, setCopiedHex] = useState<string | null>(null);
+
+  const copyHex = async (e: React.MouseEvent, hex: string) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(hex);
+      setCopiedHex(hex);
+      toast.success("Nostr hex ID copied");
+      setTimeout(() => setCopiedHex(null), 1500);
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
 
   const { data: frozenWallets, isLoading } = useQuery({
     queryKey: ["frozen-wallets-admin"],
@@ -177,6 +190,7 @@ const FrozenAccountsTab = () => {
                   <TableRow>
                     <TableHead>#</TableHead>
                     <TableHead>Owner</TableHead>
+                    <TableHead>Nostr Hex ID</TableHead>
                     <TableHead>Wallet Type</TableHead>
                     <TableHead>Wallet Address</TableHead>
                     <TableHead className="text-right">Balance (LANA)</TableHead>
@@ -194,6 +208,23 @@ const FrozenAccountsTab = () => {
                       <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-medium">
                         {wallet.owner_display_name || wallet.owner_name || "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {wallet.nostr_hex_id ? (
+                          <button
+                            type="button"
+                            onClick={(e) => copyHex(e, wallet.nostr_hex_id!)}
+                            className="inline-flex items-center gap-1 hover:text-primary"
+                            title={wallet.nostr_hex_id}
+                          >
+                            <span>{wallet.nostr_hex_id.slice(0, 8)}…{wallet.nostr_hex_id.slice(-6)}</span>
+                            {copiedHex === wallet.nostr_hex_id ? (
+                              <Check className="h-3 w-3 text-success" />
+                            ) : (
+                              <Copy className="h-3 w-3 opacity-60" />
+                            )}
+                          </button>
+                        ) : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{wallet.wallet_type}</Badge>
