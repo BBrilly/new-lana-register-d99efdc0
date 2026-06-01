@@ -666,7 +666,7 @@ const LandingPage = () => {
   }, [walletBalances]);
 
   const allWallets = useMemo(() => {
-    return walletBalances.filter(w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet') && !w.frozen);
+    return walletBalances.filter(w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet' || w.wallet_type === 'Retail') && !w.frozen);
   }, [walletBalances]);
 
   const lana8WonderWallets = useMemo(() => {
@@ -1582,7 +1582,7 @@ const LandingPage = () => {
             <TabsContent value="allwallets">
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Balance overview for Wallet and Main Wallet types
+                  Balance overview for Wallet, Main Wallet, and Retail types
                 </p>
                 <div className="text-right">
                   <span className="text-sm text-muted-foreground">Total: </span>
