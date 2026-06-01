@@ -1582,7 +1582,7 @@ const LandingPage = () => {
             <TabsContent value="allwallets">
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Balance overview for Wallet and Main Wallet types
+                  Balance overview for Wallet, Main Wallet, and Retail types
                 </p>
                 <div className="text-right">
                   <span className="text-sm text-muted-foreground">Total: </span>
