@@ -1,17 +1,45 @@
-## Cilj
-Trenutno uporabniki ne morejo izbrisati zamrznjenih (frozen) denarnic — gumb za brisanje je skrit. Dovolimo brisanje tudi za frozen denarnice, pri čemer ohranimo ostale zaščite (protected tipi: Main, Lana8Wonder, Knights, LanaKnights).
+## Težava
 
-## Sprememba
+Na landing strani (`/`) zavihek **All Wallets** ne vključuje Retail denarnic — niti v seznamu niti v seštevku »Total«. V bazi je 23 Retail denarnic, ki so spregledane.
 
-**`src/components/WalletCard.tsx`** (vrstica 76):
-- Odstrani pogoj `!isFrozen` iz `canDelete`.
-- Novo: `const canDelete = !["main", "lana8wonder", "knights", "lanaknights"].some(...)`.
+## Vzrok
 
-To samodejno omogoči gumb za brisanje + dialog tudi pri zamrznjenih denarnicah.
+V `src/pages/LandingPage.tsx` (vrstice 668–670) je filter `allWallets` omejen samo na `Wallet` in `Main Wallet`:
 
-## Backend
-`supabase/functions/delete-wallet/index.ts` že **ne** blokira frozen denarnic (preverja samo PROTECTED_TYPES in lastništvo), zato ni potrebnih sprememb. Po brisanju funkcija ponovno objavi KIND 30889 z aktualnim seznamom denarnic.
+```ts
+const allWallets = useMemo(() => {
+  return walletBalances.filter(
+    w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet') && !w.frozen
+  );
+}, [walletBalances]);
+```
 
-## Brez sprememb
-- Posodobitev spomina (`mem://features/wallet-deletion`) bo izvedena po implementaciji, da odraža, da frozen ne blokira več brisanja.
-- Brez sprememb v UI besedilu dialoga (lahko dodam opozorilo, če želite — povejte).
+Knights, LanaPays.Us, Lana.Discount in Lana8Wonder imajo svoje zavihke — Retail pa svojega zavihka nima, zato bi moral biti vključen v All Wallets, a trenutno pade ven.
+
+`/all-wallets` in `/lanaholders` že imata Retail v `WALLET_TYPES`, zato sta tam pravilna — težava je samo na zavihku All Wallets na landing strani.
+
+## Popravek
+
+V `src/pages/LandingPage.tsx`:
+
+1. **Vrstica 669** — dodaj `Retail` v filter:
+   ```ts
+   const allWallets = useMemo(() => {
+     return walletBalances.filter(
+       w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet' || w.wallet_type === 'Retail') && !w.frozen
+     );
+   }, [walletBalances]);
+   ```
+
+2. **Vrstica 1585** — posodobi opis zavihka:
+   ```
+   Balance overview for Wallet, Main Wallet, and Retail types
+   ```
+
+Števec ob naslovu (`All Wallets ({allWallets.length})`) in `allWalletsTotalBalance` se osvežita samodejno.
+
+## Kar ostane nespremenjeno
+
+- `totalRegisteredBalance` (»Total registered Lanas« na vrhu) že vključuje vse tipe — pravilen.
+- `/all-wallets`, `/lanaholders` ostaneta nedotaknjena.
+- Drugi zavihki (Knights, Lana8Wonder, LanaPays.Us, Lana.Discount, Frozen) se ne spreminjajo.

@@ -666,7 +666,7 @@ const LandingPage = () => {
   }, [walletBalances]);
 
   const allWallets = useMemo(() => {
-    return walletBalances.filter(w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet') && !w.frozen);
+    return walletBalances.filter(w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet' || w.wallet_type === 'Retail') && !w.frozen);
   }, [walletBalances]);
 
   const lana8WonderWallets = useMemo(() => {
