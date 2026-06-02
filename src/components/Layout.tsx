@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { logout, isAuthenticated, getAuthSession } from "@/utils/wifAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredParameters } from "@/utils/nostrClient";
+import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
