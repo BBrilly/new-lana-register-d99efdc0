@@ -134,6 +134,11 @@ const Layout = ({ children }: LayoutProps) => {
               <span className="text-xl font-semibold text-foreground sm:hidden">
                 DLR
               </span>
+              {currentSplit && (
+                <Badge variant="secondary" className="ml-2 font-mono">
+                  Split {currentSplit}
+                </Badge>
+              )}
             </div>
 
             {/* Desktop nav */}
