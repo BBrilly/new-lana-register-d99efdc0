@@ -823,6 +823,8 @@ const LandingPage = () => {
     return pages;
   };
 
+  const headerSplit = systemParams?.split ?? (currentSplit != null ? String(currentSplit) : null);
+
   return (
     <div className="min-h-screen bg-background">
       <PublicLinksSidebar />
@@ -836,6 +838,11 @@ const LandingPage = () => {
               </div>
               <span className="text-xl font-semibold text-foreground hidden sm:inline">Lana Register</span>
               <span className="text-xl font-semibold text-foreground sm:hidden">LR</span>
+              {headerSplit && (
+                <Badge variant="secondary" className="ml-2 font-mono">
+                  Split {headerSplit}
+                </Badge>
+              )}
             </div>
 
             {/* Desktop nav */}
