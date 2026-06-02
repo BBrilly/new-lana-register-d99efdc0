@@ -26,6 +26,27 @@ const Layout = ({ children }: LayoutProps) => {
   const authenticated = isAuthenticated();
   const [isAdmin, setIsAdmin] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [currentSplit, setCurrentSplit] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSplit = async () => {
+      const stored = getStoredParameters();
+      if (stored?.split) {
+        setCurrentSplit(stored.split);
+        return;
+      }
+      const { data } = await supabase
+        .from('system_parameters')
+        .select('split')
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && data?.split) setCurrentSplit(String(data.split));
+    };
+    loadSplit();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
