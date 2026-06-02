@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { logout, isAuthenticated, getAuthSession } from "@/utils/wifAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredParameters } from "@/utils/nostrClient";
+import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -24,6 +26,27 @@ const Layout = ({ children }: LayoutProps) => {
   const authenticated = isAuthenticated();
   const [isAdmin, setIsAdmin] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [currentSplit, setCurrentSplit] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSplit = async () => {
+      const stored = getStoredParameters();
+      if (stored?.split) {
+        setCurrentSplit(stored.split);
+        return;
+      }
+      const { data } = await supabase
+        .from('system_parameters')
+        .select('split')
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && data?.split) setCurrentSplit(String(data.split));
+    };
+    loadSplit();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -111,6 +134,11 @@ const Layout = ({ children }: LayoutProps) => {
               <span className="text-xl font-semibold text-foreground sm:hidden">
                 DLR
               </span>
+              {currentSplit && (
+                <Badge variant="secondary" className="ml-2 font-mono">
+                  Split {currentSplit}
+                </Badge>
+              )}
             </div>
 
             {/* Desktop nav */}

@@ -1,45 +1,25 @@
-## Težava
+## Prikaz trenutnega SPLIT-a v headerju
 
-Na landing strani (`/`) zavihek **All Wallets** ne vključuje Retail denarnic — niti v seznamu niti v seštevku »Total«. V bazi je 23 Retail denarnic, ki so spregledane.
+### Cilj
+V navigacijski vrstici (`Layout.tsx`) prikazati trenutni SPLIT, da je uporabnikom vedno jasno, v katerem splitu so.
 
-## Vzrok
+### Implementacija
 
-V `src/pages/LandingPage.tsx` (vrstice 668–670) je filter `allWallets` omejen samo na `Wallet` in `Main Wallet`:
+1. **`Layout.tsx`** — dodaj prikaz splita:
+   - Uporabi obstoječo funkcijo `getStoredParameters()` iz `@/utils/nostrClient`, ki prebere `split` iz `sessionStorage` (tja ga zapiše `LandingPage.tsx` preko `NostrClient`).
+   - Če v `sessionStorage` ni podatka, naredi fallback poizvedbo na Supabase `system_parameters` tabelo.
+   - Dodaj vizualni element v header (npr. poleg naslova "Decentralised Lana Register"), ki prikazuje `Split: X`.
 
-```ts
-const allWallets = useMemo(() => {
-  return walletBalances.filter(
-    w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet') && !w.frozen
-  );
-}, [walletBalances]);
+### Primer končnega izgleda
+```
+[L] Decentralised Lana Register    Split: 42    [Wallets] [Admin] [Logout]
 ```
 
-Knights, LanaPays.Us, Lana.Discount in Lana8Wonder imajo svoje zavihke — Retail pa svojega zavihka nima, zato bi moral biti vključen v All Wallets, a trenutno pade ven.
+### Tehnične podrobnosti
+- Datoteka: `src/components/Layout.tsx`
+- Uporabi `useEffect` z enkratnim branjem ob mountu.
+- Če split ni znan, se element ne prikaže.
+- Stilsko usklajeno z obstoječim dizajnom (badge ali manjši tekst).
 
-`/all-wallets` in `/lanaholders` že imata Retail v `WALLET_TYPES`, zato sta tam pravilna — težava je samo na zavihku All Wallets na landing strani.
-
-## Popravek
-
-V `src/pages/LandingPage.tsx`:
-
-1. **Vrstica 669** — dodaj `Retail` v filter:
-   ```ts
-   const allWallets = useMemo(() => {
-     return walletBalances.filter(
-       w => (w.wallet_type === 'Wallet' || w.wallet_type === 'Main Wallet' || w.wallet_type === 'Retail') && !w.frozen
-     );
-   }, [walletBalances]);
-   ```
-
-2. **Vrstica 1585** — posodobi opis zavihka:
-   ```
-   Balance overview for Wallet, Main Wallet, and Retail types
-   ```
-
-Števec ob naslovu (`All Wallets ({allWallets.length})`) in `allWalletsTotalBalance` se osvežita samodejno.
-
-## Kar ostane nespremenjeno
-
-- `totalRegisteredBalance` (»Total registered Lanas« na vrhu) že vključuje vse tipe — pravilen.
-- `/all-wallets`, `/lanaholders` ostaneta nedotaknjena.
-- Drugi zavihki (Knights, Lana8Wonder, LanaPays.Us, Lana.Discount, Frozen) se ne spreminjajo.
+### Spremembe
+- Urejanje: `src/components/Layout.tsx` — dodajanje importa, state, useEffect in JSX elementa v header.
