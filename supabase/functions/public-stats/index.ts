@@ -63,10 +63,10 @@ Deno.serve(async (req) => {
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
-    const txs = await fetchAllPaginated<{ created_at: string; amount: number | string }>((from, to) =>
+    const txs = await fetchAllPaginated<{ created_at: string; amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null }>((from, to) =>
       supabase
         .from('transactions')
-        .select('created_at, amount')
+        .select('created_at, amount, from_wallet_id, to_wallet_id')
         .gte('created_at', since.toISOString())
         .range(from, to),
     );
@@ -81,6 +81,8 @@ Deno.serve(async (req) => {
       byDayAmount[k] = 0;
     }
     for (const tx of txs) {
+      // Exclude change/self-transfer transactions (where from == to)
+      if (tx.from_wallet_id && tx.to_wallet_id && tx.from_wallet_id === tx.to_wallet_id) continue;
       const day = tx.created_at.slice(0, 10);
       if (day in byDayCount) {
         byDayCount[day]++;
