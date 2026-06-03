@@ -98,15 +98,15 @@ Deno.serve(async (req) => {
     const transactionsYesterday = byDayCount[yesterdayStr] || 0;
     const transactionsYesterdayTotalLana = byDayAmount[yesterdayStr] || 0;
 
-    // All-time totals (count + sum)
-    const { count: allTimeTxCount } = await supabase
-      .from('transactions')
-      .select('*', { count: 'exact', head: true });
-
-    const allTxAmounts = await fetchAllPaginated<{ amount: number | string }>((from, to) =>
-      supabase.from('transactions').select('amount').range(from, to),
+    // All-time totals (count + sum) — exclude change/self-transfer transactions
+    const allTxAll = await fetchAllPaginated<{ amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null }>((from, to) =>
+      supabase.from('transactions').select('amount, from_wallet_id, to_wallet_id').range(from, to),
     );
-    const allTimeTxTotalLana = allTxAmounts.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const allTxFiltered = allTxAll.filter(
+      (t) => !t.from_wallet_id || !t.to_wallet_id || t.from_wallet_id !== t.to_wallet_id,
+    );
+    const allTimeTxCount = allTxFiltered.length;
+    const allTimeTxTotalLana = allTxFiltered.reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
     // 4. Lana.Discount wallets
     const lanaDiscountWallets = await fetchAllPaginated<{
