@@ -193,16 +193,24 @@ const LandingPage = () => {
         const twoDaysAgo = new Date(yesterday);
         twoDaysAgo.setDate(twoDaysAgo.getDate() - 1);
 
-        const { data: todayTx } = await supabase
+        const { data: todayTxRaw } = await supabase
           .from('transactions')
-          .select('id')
+          .select('id, from_wallet_id, to_wallet_id')
           .gte('created_at', today.toISOString());
 
-        const { data: yesterdayTx } = await supabase
+        const { data: yesterdayTxRaw } = await supabase
           .from('transactions')
-          .select('id')
+          .select('id, from_wallet_id, to_wallet_id')
           .gte('created_at', yesterday.toISOString())
           .lt('created_at', today.toISOString());
+
+        // Exclude change/self-transfer transactions (where from == to)
+        const todayTx = (todayTxRaw || []).filter(
+          (tx) => !tx.from_wallet_id || !tx.to_wallet_id || tx.from_wallet_id !== tx.to_wallet_id
+        );
+        const yesterdayTx = (yesterdayTxRaw || []).filter(
+          (tx) => !tx.from_wallet_id || !tx.to_wallet_id || tx.from_wallet_id !== tx.to_wallet_id
+        );
 
         // Fetch only transactions between DIFFERENT registered wallets (excluding self-transfers/staking)
         const { data: monitoredTransactions } = await supabase

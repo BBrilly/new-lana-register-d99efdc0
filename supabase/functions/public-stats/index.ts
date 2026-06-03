@@ -63,10 +63,10 @@ Deno.serve(async (req) => {
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
-    const txs = await fetchAllPaginated<{ created_at: string; amount: number | string }>((from, to) =>
+    const txs = await fetchAllPaginated<{ created_at: string; amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null }>((from, to) =>
       supabase
         .from('transactions')
-        .select('created_at, amount')
+        .select('created_at, amount, from_wallet_id, to_wallet_id')
         .gte('created_at', since.toISOString())
         .range(from, to),
     );
@@ -81,6 +81,8 @@ Deno.serve(async (req) => {
       byDayAmount[k] = 0;
     }
     for (const tx of txs) {
+      // Exclude change/self-transfer transactions (where from == to)
+      if (tx.from_wallet_id && tx.to_wallet_id && tx.from_wallet_id === tx.to_wallet_id) continue;
       const day = tx.created_at.slice(0, 10);
       if (day in byDayCount) {
         byDayCount[day]++;
@@ -96,15 +98,15 @@ Deno.serve(async (req) => {
     const transactionsYesterday = byDayCount[yesterdayStr] || 0;
     const transactionsYesterdayTotalLana = byDayAmount[yesterdayStr] || 0;
 
-    // All-time totals (count + sum)
-    const { count: allTimeTxCount } = await supabase
-      .from('transactions')
-      .select('*', { count: 'exact', head: true });
-
-    const allTxAmounts = await fetchAllPaginated<{ amount: number | string }>((from, to) =>
-      supabase.from('transactions').select('amount').range(from, to),
+    // All-time totals (count + sum) — exclude change/self-transfer transactions
+    const allTxAll = await fetchAllPaginated<{ amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null }>((from, to) =>
+      supabase.from('transactions').select('amount, from_wallet_id, to_wallet_id').range(from, to),
     );
-    const allTimeTxTotalLana = allTxAmounts.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const allTxFiltered = allTxAll.filter(
+      (t) => !t.from_wallet_id || !t.to_wallet_id || t.from_wallet_id !== t.to_wallet_id,
+    );
+    const allTimeTxCount = allTxFiltered.length;
+    const allTimeTxTotalLana = allTxFiltered.reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
     // 4. Lana.Discount wallets
     const lanaDiscountWallets = await fetchAllPaginated<{
