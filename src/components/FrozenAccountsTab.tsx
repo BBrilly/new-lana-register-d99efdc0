@@ -42,6 +42,7 @@ interface FrozenWallet {
   owner_display_name: string | null;
   nostr_hex_id: string | null;
   main_wallet_id: string;
+  frozen_at: string | null;
 }
 
 const FrozenAccountsTab = () => {
@@ -75,7 +76,7 @@ const FrozenAccountsTab = () => {
       while (hasMore) {
         const { data, error } = await supabase
           .from("wallets")
-          .select(`id, wallet_id, wallet_type, frozen, freeze_reason, main_wallet_id, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
+          .select(`id, wallet_id, wallet_type, frozen, freeze_reason, main_wallet_id, updated_at, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
           .eq("frozen", true)
           .range(offset, offset + PAGE_SIZE - 1);
 
@@ -98,6 +99,7 @@ const FrozenAccountsTab = () => {
         owner_display_name: (w.main_wallet as any)?.display_name || null,
         nostr_hex_id: (w.main_wallet as any)?.nostr_hex_id || null,
         main_wallet_id: w.main_wallet_id,
+        frozen_at: w.updated_at || null,
       }));
     },
   });
@@ -195,6 +197,7 @@ const FrozenAccountsTab = () => {
                     <TableHead>Wallet Address</TableHead>
                     <TableHead className="text-right">Balance (LANA)</TableHead>
                     <TableHead>Reason</TableHead>
+                    <TableHead>Frozen At</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -247,6 +250,11 @@ const FrozenAccountsTab = () => {
                         <Badge variant="secondary" className="text-xs">
                           {FREEZE_LABELS[wallet.freeze_reason] || wallet.freeze_reason || "Unknown"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {wallet.frozen_at
+                          ? new Date(wallet.frozen_at).toLocaleString()
+                          : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="destructive" className="gap-1">
