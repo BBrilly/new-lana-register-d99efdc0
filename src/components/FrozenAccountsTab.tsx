@@ -197,6 +197,7 @@ const FrozenAccountsTab = () => {
                     <TableHead>Wallet Address</TableHead>
                     <TableHead className="text-right">Balance (LANA)</TableHead>
                     <TableHead>Reason</TableHead>
+                    <TableHead>Frozen At</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
