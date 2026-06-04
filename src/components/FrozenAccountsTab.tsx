@@ -42,6 +42,7 @@ interface FrozenWallet {
   owner_display_name: string | null;
   nostr_hex_id: string | null;
   main_wallet_id: string;
+  frozen_at: string | null;
 }
 
 const FrozenAccountsTab = () => {
