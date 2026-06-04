@@ -99,6 +99,7 @@ const FrozenAccountsTab = () => {
         owner_display_name: (w.main_wallet as any)?.display_name || null,
         nostr_hex_id: (w.main_wallet as any)?.nostr_hex_id || null,
         main_wallet_id: w.main_wallet_id,
+        frozen_at: w.updated_at || null,
       }));
     },
   });
