@@ -251,6 +251,11 @@ const FrozenAccountsTab = () => {
                           {FREEZE_LABELS[wallet.freeze_reason] || wallet.freeze_reason || "Unknown"}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {wallet.frozen_at
+                          ? new Date(wallet.frozen_at).toLocaleString()
+                          : "—"}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="destructive" className="gap-1">
                           <Lock className="h-3 w-3" />
