@@ -76,7 +76,7 @@ const FrozenAccountsTab = () => {
       while (hasMore) {
         const { data, error } = await supabase
           .from("wallets")
-          .select(`id, wallet_id, wallet_type, frozen, freeze_reason, main_wallet_id, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
+          .select(`id, wallet_id, wallet_type, frozen, freeze_reason, main_wallet_id, updated_at, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
           .eq("frozen", true)
           .range(offset, offset + PAGE_SIZE - 1);
 
