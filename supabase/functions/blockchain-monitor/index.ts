@@ -345,128 +345,145 @@ Deno.serve(async (req) => {
 
         let transactionsWithRegisteredWallets = 0;
 
-        // Process each transaction in the block
-        for (const txid of blockInfo.tx) {
-          try {
-            const tx = await rpcCall('getrawtransaction', [txid, 1]);
+        // ── Step 1: Batch-fetch ALL transactions in this block ──
+        const txids: string[] = blockInfo.tx || [];
+        const txCalls = txids.map((txid: string) => ({
+          method: 'getrawtransaction',
+          params: [txid, 1],
+        }));
+        const txResults = await rpcBatch(txCalls, 100);
 
-            // Collect sender addresses
+        // ── Step 2: Filter to "interesting" txs (any vout address is a registered wallet) ──
+        // This is the FAST filter: if no registered wallet is in the vouts, skip entirely
+        // (we don't even resolve vin senders for those txs).
+        type InterestingTx = {
+          txid: string;
+          tx: any;
+          receivers: Array<{ address: string; amount: number }>;
+          hasRegisteredVout: boolean;
+        };
+        const interesting: InterestingTx[] = [];
+
+        for (let i = 0; i < txids.length; i++) {
+          const tx = txResults[i];
+          if (!tx) continue;
+          const receivers: Array<{ address: string; amount: number }> = [];
+          let hasRegisteredVout = false;
+          if (tx.vout) {
+            for (const vout of tx.vout) {
+              const addr = vout.scriptPubKey?.addresses?.[0];
+              const amount = vout.value || 0;
+              if (addr) {
+                receivers.push({ address: addr, amount });
+                if (walletAddresses.has(addr)) hasRegisteredVout = true;
+              }
+            }
+          }
+          if (hasRegisteredVout) {
+            interesting.push({ txid: txids[i], tx, receivers, hasRegisteredVout });
+          }
+        }
+
+        console.log(`Block ${blockHeight}: ${interesting.length}/${txids.length} txs touch registered wallets`);
+
+        // ── Step 3: Batch-fetch prev txs (for sender resolution) ONLY for interesting txs ──
+        const prevTxidSet = new Set<string>();
+        for (const it of interesting) {
+          if (it.tx.vin) {
+            for (const vin of it.tx.vin) {
+              if (vin.txid && vin.vout !== undefined) prevTxidSet.add(vin.txid);
+            }
+          }
+        }
+        const prevTxids = Array.from(prevTxidSet);
+        const prevCalls = prevTxids.map(t => ({ method: 'getrawtransaction', params: [t, 1] }));
+        const prevResults = prevTxids.length > 0 ? await rpcBatch(prevCalls, 100) : [];
+        const prevTxMap = new Map<string, any>();
+        for (let i = 0; i < prevTxids.length; i++) {
+          if (prevResults[i]) prevTxMap.set(prevTxids[i], prevResults[i]);
+        }
+
+        // ── Step 4: Process each interesting tx (in-memory, no more RPC calls) ──
+        for (const it of interesting) {
+          try {
+            const { txid, tx, receivers } = it;
+
+            // Resolve sender addresses from prev txs
             const senders = new Set<string>();
             if (tx.vin) {
               for (const vin of tx.vin) {
                 if (vin.coinbase) {
                   senders.add('[COINBASE/STAKE]');
                 } else if (vin.txid && vin.vout !== undefined) {
-                  try {
-                    const prevTx = await rpcCall('getrawtransaction', [vin.txid, 1]);
-                    if (prevTx.vout && prevTx.vout[vin.vout]) {
-                      const addr = prevTx.vout[vin.vout].scriptPubKey?.addresses?.[0];
-                      if (addr) senders.add(addr);
-                    }
-                  } catch (e) {
-                    console.log(`Error getting previous transaction ${vin.txid}: ${e}`);
-                  }
+                  const prevTx = prevTxMap.get(vin.txid);
+                  const addr = prevTx?.vout?.[vin.vout]?.scriptPubKey?.addresses?.[0];
+                  if (addr) senders.add(addr);
                 }
               }
             }
 
-            // Collect receiver addresses and amounts
-            const receivers: Array<{ address: string; amount: number }> = [];
-            if (tx.vout) {
-              for (const vout of tx.vout) {
-                const addr = vout.scriptPubKey?.addresses?.[0];
-                const amount = vout.value || 0;
-                if (addr) {
-                  receivers.push({ address: addr, amount });
-                }
-              }
-            }
+            transactionsWithRegisteredWallets++;
 
-            // Check if any sender or receiver is a registered wallet
-            const involvedWallets = new Set([
-              ...senders,
-              ...receivers.map(r => r.address)
-            ]);
-            const registeredInvolved = Array.from(involvedWallets).filter(addr => 
-              walletAddresses.has(addr)
-            );
-
-            if (registeredInvolved.length > 0) {
-              transactionsWithRegisteredWallets++;
-
-              // Insert transaction records for each registered wallet involved
-              for (const senderAddr of senders) {
-                if (walletAddresses.has(senderAddr)) {
-                  for (const receiver of receivers) {
-                    if (walletAddresses.has(receiver.address)) {
-                      // Both sender and receiver are registered
-                      const senderWallet = walletMap.get(senderAddr);
-                      const receiverWallet = walletMap.get(receiver.address);
-                      
-                      await supabase.from('transactions').insert({
-                        from_wallet_id: senderWallet?.id,
-                        to_wallet_id: receiverWallet?.id,
-                        amount: receiver.amount,
-                        block_id: blockHeight,
-                        notes: `Blockchain transaction ${txid}`
-                      });
-
-                      // Oba sta registrirana - normalna interna transakcija
-                      // NE zapisuj v registered_lana_events (samo neregistrirane transakcije gredo tja)
-                    } else {
-                      // Only sender is registered
-                      const senderWallet = walletMap.get(senderAddr);
-                      
-                      await supabase.from('transactions').insert({
-                        from_wallet_id: senderWallet?.id,
-                        to_wallet_id: null,
-                        amount: receiver.amount,
-                        block_id: blockHeight,
-                        notes: `Outgoing blockchain transaction ${txid} to ${receiver.address}`
-                      });
-                    }
+            // Insert transaction records for each registered wallet involved
+            for (const senderAddr of senders) {
+              if (walletAddresses.has(senderAddr)) {
+                for (const receiver of receivers) {
+                  if (walletAddresses.has(receiver.address)) {
+                    const senderWallet = walletMap.get(senderAddr);
+                    const receiverWallet = walletMap.get(receiver.address);
+                    await supabase.from('transactions').insert({
+                      from_wallet_id: senderWallet?.id,
+                      to_wallet_id: receiverWallet?.id,
+                      amount: receiver.amount,
+                      block_id: blockHeight,
+                      notes: `Blockchain transaction ${txid}`
+                    });
+                  } else {
+                    const senderWallet = walletMap.get(senderAddr);
+                    await supabase.from('transactions').insert({
+                      from_wallet_id: senderWallet?.id,
+                      to_wallet_id: null,
+                      amount: receiver.amount,
+                      block_id: blockHeight,
+                      notes: `Outgoing blockchain transaction ${txid} to ${receiver.address}`
+                    });
                   }
-                } else {
-                  // Check if any receiver is registered
-                  for (const receiver of receivers) {
-                    if (walletAddresses.has(receiver.address)) {
-                      const receiverWallet = walletMap.get(receiver.address);
-                      
-                      await supabase.from('transactions').insert({
-                        from_wallet_id: null,
-                        to_wallet_id: receiverWallet?.id,
-                        amount: receiver.amount,
-                        block_id: blockHeight,
-                        notes: `Incoming blockchain transaction ${txid} from ${Array.from(senders).join(', ')}`
-                      });
+                }
+              } else {
+                for (const receiver of receivers) {
+                  if (walletAddresses.has(receiver.address)) {
+                    const receiverWallet = walletMap.get(receiver.address);
+                    await supabase.from('transactions').insert({
+                      from_wallet_id: null,
+                      to_wallet_id: receiverWallet?.id,
+                      amount: receiver.amount,
+                      block_id: blockHeight,
+                      notes: `Incoming blockchain transaction ${txid} from ${Array.from(senders).join(', ')}`
+                    });
 
-                      // Pošiljatelj je NEREGISTRIRAN - preveri če je prejemnik Knights wallet
-                      if (receiverWallet?.wallet_type === 'Knights') {
-                        // Insert UNREGISTERED LANA to registered_lana_events for Knights wallet
-                        await supabase.from('registered_lana_events').insert({
-                          wallet_id: receiverWallet.id,
-                          amount: receiver.amount,
-                          notes: `UNREGISTERED LANA to Knights wallet from ${Array.from(senders).join(', ')} (TX: ${txid})`,
-                          split: currentSplit,
-                          block_id: blockHeight,
-                          transaction_id: txid
+                    if (receiverWallet?.wallet_type === 'Knights') {
+                      await supabase.from('registered_lana_events').insert({
+                        wallet_id: receiverWallet.id,
+                        amount: receiver.amount,
+                        notes: `UNREGISTERED LANA to Knights wallet from ${Array.from(senders).join(', ')} (TX: ${txid})`,
+                        split: currentSplit,
+                        block_id: blockHeight,
+                        transaction_id: txid
+                      });
+                      totalKnightsTransactions++;
+                      console.log(`🏰 Knights wallet received ${receiver.amount} UNREGISTERED LANA from unregistered sender`);
+                    }
+
+                    if (autoFreezeThreshold !== null && receiver.amount >= autoFreezeThreshold && receiverWallet?.wallet_type !== 'Knights') {
+                      const recvWallet = walletMap.get(receiver.address);
+                      if (recvWallet) {
+                        walletsToAutoFreeze.set(recvWallet.id, {
+                          walletUuid: recvWallet.id,
+                          mainWalletId: '',
+                          address: receiver.address,
+                          amount: receiver.amount
                         });
-                        totalKnightsTransactions++;
-                        console.log(`🏰 Knights wallet received ${receiver.amount} UNREGISTERED LANA from unregistered sender`);
-                      }
-
-                      // Auto-freeze: if unregistered LANA amount exceeds threshold
-                      if (autoFreezeThreshold !== null && receiver.amount >= autoFreezeThreshold && receiverWallet?.wallet_type !== 'Knights') {
-                        const recvWallet = walletMap.get(receiver.address);
-                        if (recvWallet) {
-                          walletsToAutoFreeze.set(recvWallet.id, {
-                            walletUuid: recvWallet.id,
-                            mainWalletId: '', // will be looked up later
-                            address: receiver.address,
-                            amount: receiver.amount
-                          });
-                          console.log(`🧊 Queued auto-freeze for ${receiver.address} — received ${receiver.amount} LANA from unregistered sender (threshold: ${autoFreezeThreshold})`);
-                        }
+                        console.log(`🧊 Queued auto-freeze for ${receiver.address} — received ${receiver.amount} LANA from unregistered sender (threshold: ${autoFreezeThreshold})`);
                       }
                     }
                   }
@@ -474,7 +491,7 @@ Deno.serve(async (req) => {
               }
             }
           } catch (txError) {
-            console.log(`Error processing transaction ${txid} in block ${blockHeight}: ${txError}`);
+            console.log(`Error processing transaction ${it.txid} in block ${blockHeight}: ${txError}`);
           }
         }
 
