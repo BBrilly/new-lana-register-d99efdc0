@@ -105,11 +105,26 @@ Deno.serve(async (req) => {
     const grouped = groupRows(txs);
     for (const g of grouped.values()) {
       if (!g.hasNonChange) continue;
-      if (g.day in byDayCount) {
-        byDayCount[g.day]++;
+      if (g.day in byDayAmount) {
         byDayAmount[g.day] += g.nonChangeAmount;
       }
     }
+
+    // Counts come from block_tx (Audited Blocks) — authoritative "Registered TX" per block.
+    const blocks = await fetchAllPaginated<{ time_staked: string; transaction_including_registered_wallets: number | null }>((from, to) =>
+      supabase
+        .from('block_tx')
+        .select('time_staked, transaction_including_registered_wallets')
+        .gte('time_staked', since.toISOString())
+        .range(from, to),
+    );
+    for (const b of blocks) {
+      const day = (b.time_staked || '').slice(0, 10);
+      if (day in byDayCount) {
+        byDayCount[day] += Number(b.transaction_including_registered_wallets) || 0;
+      }
+    }
+
     const transactionsPerDay = Object.keys(byDayCount)
       .sort()
       .map((date) => ({ date, count: byDayCount[date], total_amount_lana: byDayAmount[date] }));
