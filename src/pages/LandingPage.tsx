@@ -193,42 +193,27 @@ const LandingPage = () => {
         const twoDaysAgo = new Date(yesterday);
         twoDaysAgo.setDate(twoDaysAgo.getDate() - 1);
 
-        // Fetch with high limit to bypass 1000-row default
-        const { data: todayTxRaw } = await supabase
-          .from('transactions')
-          .select('id, from_wallet_id, to_wallet_id, notes')
-          .gte('created_at', today.toISOString())
-          .limit(50000);
+        // Today/Yesterday counts = sum of `transaction_including_registered_wallets`
+        // from the Audited Blocks (block_tx). This matches the per-block "Registered TX"
+        // column shown below — the authoritative source.
+        const { data: todayBlocks } = await supabase
+          .from('block_tx')
+          .select('transaction_including_registered_wallets')
+          .gte('time_staked', today.toISOString())
+          .limit(100000);
 
-        const { data: yesterdayTxRaw } = await supabase
-          .from('transactions')
-          .select('id, from_wallet_id, to_wallet_id, notes')
-          .gte('created_at', yesterday.toISOString())
-          .lt('created_at', today.toISOString())
-          .limit(50000);
+        const { data: yesterdayBlocks } = await supabase
+          .from('block_tx')
+          .select('transaction_including_registered_wallets')
+          .gte('time_staked', yesterday.toISOString())
+          .lt('time_staked', today.toISOString())
+          .limit(100000);
 
-        // Count DISTINCT blockchain TX hashes (from notes), excluding pure change/self-transfer TXs.
-        // A blockchain TX counts iff it has at least one non-change row.
-        // Rows without a hash in notes are keyed by id (standalone TX).
-        const TX_HASH_RE = /Blockchain transaction ([a-f0-9]{64})/i;
-        const countDistinctNonChange = (
-          rows: Array<{ id: string; from_wallet_id: string | null; to_wallet_id: string | null; notes: string | null }>
-        ) => {
-          const groups = new Map<string, boolean>();
-          for (const r of rows) {
-            const m = r.notes?.match(TX_HASH_RE);
-            const key = m ? `tx:${m[1]}` : `id:${r.id}`;
-            const isChange = !!(r.from_wallet_id && r.to_wallet_id && r.from_wallet_id === r.to_wallet_id);
-            if (!groups.get(key) && !isChange) groups.set(key, true);
-            else if (!groups.has(key)) groups.set(key, false);
-          }
-          let n = 0;
-          for (const v of groups.values()) if (v) n++;
-          return n;
-        };
+        const sumRegistered = (rows: Array<{ transaction_including_registered_wallets: number | null }> | null) =>
+          (rows || []).reduce((s, r) => s + (Number(r.transaction_including_registered_wallets) || 0), 0);
 
-        const todayTx = { length: countDistinctNonChange(todayTxRaw || []) };
-        const yesterdayTx = { length: countDistinctNonChange(yesterdayTxRaw || []) };
+        const todayTx = { length: sumRegistered(todayBlocks) };
+        const yesterdayTx = { length: sumRegistered(yesterdayBlocks) };
 
         // Fetch only transactions between DIFFERENT registered wallets (excluding self-transfers/staking)
         const { data: monitoredTransactions } = await supabase
