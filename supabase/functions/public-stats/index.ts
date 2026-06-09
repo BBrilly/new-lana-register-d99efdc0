@@ -63,13 +63,35 @@ Deno.serve(async (req) => {
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
-    const txs = await fetchAllPaginated<{ created_at: string; amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null }>((from, to) =>
+    const txs = await fetchAllPaginated<{ id: string; created_at: string; amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null; notes: string | null }>((from, to) =>
       supabase
         .from('transactions')
-        .select('created_at, amount, from_wallet_id, to_wallet_id')
+        .select('id, created_at, amount, from_wallet_id, to_wallet_id, notes')
         .gte('created_at', since.toISOString())
         .range(from, to),
     );
+
+    // Group by blockchain TX hash (from notes); rows without hash keyed by id.
+    // A TX counts iff at least one row is non-change; amount = sum of non-change rows' amount.
+    const TX_HASH_RE = /Blockchain transaction ([a-f0-9]{64})/i;
+    type TxGroup = { day: string; nonChangeAmount: number; hasNonChange: boolean };
+    const groupRows = (rows: typeof txs) => {
+      const map = new Map<string, TxGroup>();
+      for (const r of rows) {
+        const m = r.notes?.match(TX_HASH_RE);
+        const key = m ? `tx:${m[1]}` : `id:${r.id}`;
+        const day = r.created_at.slice(0, 10);
+        const isChange = !!(r.from_wallet_id && r.to_wallet_id && r.from_wallet_id === r.to_wallet_id);
+        const g = map.get(key) || { day, nonChangeAmount: 0, hasNonChange: false };
+        if (!isChange) {
+          g.hasNonChange = true;
+          g.nonChangeAmount += Number(r.amount) || 0;
+          g.day = day; // prefer day from a real (non-change) row
+        }
+        map.set(key, g);
+      }
+      return map;
+    };
 
     const byDayCount: Record<string, number> = {};
     const byDayAmount: Record<string, number> = {};
@@ -80,13 +102,12 @@ Deno.serve(async (req) => {
       byDayCount[k] = 0;
       byDayAmount[k] = 0;
     }
-    for (const tx of txs) {
-      // Exclude change/self-transfer transactions (where from == to)
-      if (tx.from_wallet_id && tx.to_wallet_id && tx.from_wallet_id === tx.to_wallet_id) continue;
-      const day = tx.created_at.slice(0, 10);
-      if (day in byDayCount) {
-        byDayCount[day]++;
-        byDayAmount[day] += Number(tx.amount) || 0;
+    const grouped = groupRows(txs);
+    for (const g of grouped.values()) {
+      if (!g.hasNonChange) continue;
+      if (g.day in byDayCount) {
+        byDayCount[g.day]++;
+        byDayAmount[g.day] += g.nonChangeAmount;
       }
     }
     const transactionsPerDay = Object.keys(byDayCount)
@@ -98,15 +119,18 @@ Deno.serve(async (req) => {
     const transactionsYesterday = byDayCount[yesterdayStr] || 0;
     const transactionsYesterdayTotalLana = byDayAmount[yesterdayStr] || 0;
 
-    // All-time totals (count + sum) — exclude change/self-transfer transactions
-    const allTxAll = await fetchAllPaginated<{ amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null }>((from, to) =>
-      supabase.from('transactions').select('amount, from_wallet_id, to_wallet_id').range(from, to),
+    // All-time totals: distinct blockchain TX hashes, non-change only.
+    const allTxAll = await fetchAllPaginated<{ id: string; created_at: string; amount: number | string; from_wallet_id: string | null; to_wallet_id: string | null; notes: string | null }>((from, to) =>
+      supabase.from('transactions').select('id, created_at, amount, from_wallet_id, to_wallet_id, notes').range(from, to),
     );
-    const allTxFiltered = allTxAll.filter(
-      (t) => !t.from_wallet_id || !t.to_wallet_id || t.from_wallet_id !== t.to_wallet_id,
-    );
-    const allTimeTxCount = allTxFiltered.length;
-    const allTimeTxTotalLana = allTxFiltered.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const allGrouped = groupRows(allTxAll);
+    let allTimeTxCount = 0;
+    let allTimeTxTotalLana = 0;
+    for (const g of allGrouped.values()) {
+      if (!g.hasNonChange) continue;
+      allTimeTxCount++;
+      allTimeTxTotalLana += g.nonChangeAmount;
+    }
 
     // 4. Lana.Discount wallets
     const lanaDiscountWallets = await fetchAllPaginated<{
