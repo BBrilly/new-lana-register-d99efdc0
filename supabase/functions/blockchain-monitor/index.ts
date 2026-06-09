@@ -101,6 +101,56 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Batched JSON-RPC call: sends an array of requests in a single HTTP call.
+    // Returns results in the same order as input (null on per-call error).
+    async function rpcBatch(
+      calls: { method: string; params: any[] }[],
+      chunkSize = 100
+    ): Promise<any[]> {
+      const out: any[] = new Array(calls.length).fill(null);
+      for (let start = 0; start < calls.length; start += chunkSize) {
+        const slice = calls.slice(start, start + chunkSize);
+        const payload = slice.map((c, i) => ({
+          jsonrpc: '1.0',
+          id: start + i,
+          method: c.method,
+          params: c.params,
+        }));
+
+        let attempt = 0;
+        while (true) {
+          try {
+            const response = await fetch(rpcUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${btoa(`${rpcUser}:${rpcPassword}`)}`,
+              },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(RPC_TIMEOUT * 3),
+            });
+            if (!response.ok) throw new Error(`Batch RPC failed: ${response.statusText}`);
+            const results = await response.json();
+            if (!Array.isArray(results)) throw new Error('Batch RPC: non-array response');
+            for (const r of results) {
+              if (typeof r.id === 'number') {
+                out[r.id] = r.error ? null : r.result;
+              }
+            }
+            break;
+          } catch (e) {
+            attempt++;
+            if (attempt > MAX_RPC_RETRIES) {
+              console.log(`Batch RPC failed permanently after ${attempt} attempts: ${e}`);
+              break;
+            }
+            await new Promise(r => setTimeout(r, RPC_RETRY_DELAY));
+          }
+        }
+      }
+      return out;
+    }
+
     // Get current blockchain height
     const currentHeight = await rpcCall('getblockcount');
     console.log(`Current blockchain height: ${currentHeight}`);
