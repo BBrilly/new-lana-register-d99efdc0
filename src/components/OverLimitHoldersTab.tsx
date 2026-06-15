@@ -131,21 +131,39 @@ const OverLimitHoldersTab = () => {
             {eurRate > 0 && limit != null && <> (≈ €{fmtEur(limit * eurRate)})</>}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={showOnlyOver ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowOnlyOver(true)}
-          >
-            Over limit only ({overLimit.length})
-          </Button>
-          <Button
-            variant={!showOnlyOver ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowOnlyOver(false)}
-          >
-            All holders ({holders.length})
-          </Button>
+        <CardContent className="space-y-3">
+          <div className="rounded-lg border bg-sky-50 dark:bg-sky-950/30 p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Total LANA waiting to enter circulation (excess above cap)
+            </div>
+            <div className="mt-1 text-2xl font-bold text-sky-700 dark:text-sky-300">
+              {fmtLana(totalExcess)} LANA
+              {eurRate > 0 && (
+                <span className="ml-2 text-base font-normal text-muted-foreground">
+                  ≈ €{fmtEur(totalExcess * eurRate)}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Sum of (balance − {limit != null ? fmtLana(limit) : "—"}) across {overLimit.length} over-limit holder{overLimit.length === 1 ? "" : "s"}.
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant={showOnlyOver ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowOnlyOver(true)}
+            >
+              Over limit only ({overLimit.length})
+            </Button>
+            <Button
+              variant={!showOnlyOver ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowOnlyOver(false)}
+            >
+              All holders ({holders.length})
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
