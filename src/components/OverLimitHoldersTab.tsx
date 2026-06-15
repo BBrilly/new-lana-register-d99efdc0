@@ -182,6 +182,7 @@ const OverLimitHoldersTab = () => {
                     <TableHead>Name</TableHead>
                     <TableHead className="text-center">Wallets</TableHead>
                     <TableHead className="text-right">LANA</TableHead>
+                    <TableHead className="text-right">Excess</TableHead>
                     <TableHead className="text-right">EUR</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
