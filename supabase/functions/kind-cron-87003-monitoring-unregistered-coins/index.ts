@@ -261,6 +261,9 @@ Deno.serve(async (req) => {
     const relays = (sysParams.relays as string[]).filter((r: string) => r.startsWith('wss://'));
     console.log(`📡 Using ${relays.length} relays:`, relays);
 
+    const threshold = Number((sysParams as any).freeze_lana_account_above) || 100;
+    console.log(`🪙 Unregistered notify threshold: ${threshold} LANA`);
+
     // 3. Fetch unpublished unregistered_lana_events (also fetch those needing DM retry)
     console.log('📋 Fetching unpublished unregistered_lana_events...');
     const { data: unpublishedEvents, error: eventsError } = await supabase
