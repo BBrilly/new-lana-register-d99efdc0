@@ -461,6 +461,9 @@ Deno.serve(async (req) => {
     console.log('📊 Final summary:', {
       total: unpublishedEvents.length,
       ownedEvents: ownedEvents.length,
+      belowThreshold: belowThresholdCount,
+      threshold,
+      processed: aboveThresholdEvents.length,
       skipped: skippedCount,
       kind87003_success: successCount,
       kind87003_errors: errorCount,
@@ -471,10 +474,12 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Processed ${ownedEvents.length} events (${skippedCount} skipped)`,
+        message: `Processed ${aboveThresholdEvents.length} events (${skippedCount} skipped, ${belowThresholdCount} below threshold ${threshold})`,
         total: unpublishedEvents.length,
-        processed: ownedEvents.length,
+        processed: aboveThresholdEvents.length,
         skipped: skippedCount,
+        belowThreshold: belowThresholdCount,
+        threshold,
         kind87003: { successful: successCount, failed: errorCount },
         dm: { sent: dmSentCount, failed: dmFailCount },
         events: processedEvents,
