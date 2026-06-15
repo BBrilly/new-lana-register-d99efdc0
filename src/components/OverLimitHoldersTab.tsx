@@ -190,9 +190,9 @@ const OverLimitHoldersTab = () => {
                 </TableHeader>
                 <TableBody>
                   {displayed.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        No holders found
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          No holders found
                       </TableCell>
                     </TableRow>
                   ) : (
