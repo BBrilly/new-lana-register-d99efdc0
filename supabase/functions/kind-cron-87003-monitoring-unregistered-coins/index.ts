@@ -328,6 +328,18 @@ Deno.serve(async (req) => {
 
     console.log(`📋 ${ownedEvents.length} events belong to owned wallets (is_owned = true)`);
 
+    // Filter out events below threshold — they remain in queue so future aggregation can trigger
+    const aboveThresholdEvents = ownedEvents.filter((event) => {
+      const amt = Number(event.unregistered_amount) || 0;
+      if (amt < threshold) {
+        console.log(`⏭️ Skipping event ${event.id} - amount ${amt} LANA < threshold ${threshold}`);
+        return false;
+      }
+      return true;
+    });
+    const belowThresholdCount = ownedEvents.length - aboveThresholdEvents.length;
+    console.log(`📋 ${aboveThresholdEvents.length} events ≥ threshold; ${belowThresholdCount} below threshold`);
+
     // 5. Process each owned event
     let successCount = 0;
     let errorCount = 0;
