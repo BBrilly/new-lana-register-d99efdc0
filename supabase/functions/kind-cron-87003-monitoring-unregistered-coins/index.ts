@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
     console.log('📡 Fetching relay configuration...');
     const { data: sysParams, error: sysError } = await supabase
       .from('system_parameters')
-      .select('relays, pubkey')
+      .select('relays, pubkey, freeze_lana_account_above')
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
