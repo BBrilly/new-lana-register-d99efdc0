@@ -81,6 +81,9 @@ const OverLimitHoldersTab = () => {
   const eurRate = fxRates?.EUR ?? 0;
   const overLimit = limit != null ? holders.filter(h => h.totalBalance > limit) : [];
   const displayed = showOnlyOver ? overLimit : holders;
+  const totalExcess = limit != null
+    ? holders.reduce((sum, h) => sum + Math.max(0, h.totalBalance - limit), 0)
+    : 0;
 
   const fmtLana = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
   const fmtEur = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -128,21 +131,39 @@ const OverLimitHoldersTab = () => {
             {eurRate > 0 && limit != null && <> (≈ €{fmtEur(limit * eurRate)})</>}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={showOnlyOver ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowOnlyOver(true)}
-          >
-            Over limit only ({overLimit.length})
-          </Button>
-          <Button
-            variant={!showOnlyOver ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowOnlyOver(false)}
-          >
-            All holders ({holders.length})
-          </Button>
+        <CardContent className="space-y-3">
+          <div className="rounded-lg border bg-sky-50 dark:bg-sky-950/30 p-4">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Total LANA waiting to enter circulation (excess above cap)
+            </div>
+            <div className="mt-1 text-2xl font-bold text-sky-700 dark:text-sky-300">
+              {fmtLana(totalExcess)} LANA
+              {eurRate > 0 && (
+                <span className="ml-2 text-base font-normal text-muted-foreground">
+                  ≈ €{fmtEur(totalExcess * eurRate)}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Sum of (balance − {limit != null ? fmtLana(limit) : "—"}) across {overLimit.length} over-limit holder{overLimit.length === 1 ? "" : "s"}.
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant={showOnlyOver ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowOnlyOver(true)}
+            >
+              Over limit only ({overLimit.length})
+            </Button>
+            <Button
+              variant={!showOnlyOver ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowOnlyOver(false)}
+            >
+              All holders ({holders.length})
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -161,6 +182,7 @@ const OverLimitHoldersTab = () => {
                     <TableHead>Name</TableHead>
                     <TableHead className="text-center">Wallets</TableHead>
                     <TableHead className="text-right">LANA</TableHead>
+                    <TableHead className="text-right">Excess</TableHead>
                     <TableHead className="text-right">EUR</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
@@ -168,9 +190,9 @@ const OverLimitHoldersTab = () => {
                 </TableHeader>
                 <TableBody>
                   {displayed.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        No holders found
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          No holders found
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -202,6 +224,14 @@ const OverLimitHoldersTab = () => {
                           </TableCell>
                           <TableCell className="text-right font-semibold">
                             {fmtLana(h.totalBalance)}
+                          </TableCell>
+                          <TableCell className={cn(
+                            "text-right font-medium",
+                            isOver ? "text-sky-700 dark:text-sky-300" : "text-muted-foreground"
+                          )}>
+                            {limit != null && h.totalBalance > limit
+                              ? `+${fmtLana(h.totalBalance - limit)}`
+                              : "—"}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">
                             {eurRate > 0 ? `€${fmtEur(h.totalBalance * eurRate)}` : "—"}
