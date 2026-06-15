@@ -81,6 +81,9 @@ const OverLimitHoldersTab = () => {
   const eurRate = fxRates?.EUR ?? 0;
   const overLimit = limit != null ? holders.filter(h => h.totalBalance > limit) : [];
   const displayed = showOnlyOver ? overLimit : holders;
+  const totalExcess = limit != null
+    ? holders.reduce((sum, h) => sum + Math.max(0, h.totalBalance - limit), 0)
+    : 0;
 
   const fmtLana = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
   const fmtEur = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
