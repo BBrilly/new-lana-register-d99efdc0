@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
     let skippedCount = unpublishedEvents.length - ownedEvents.length;
     const processedEvents: Array<{ id: string; eventId: string; success: boolean; dmSent: boolean }> = [];
 
-    for (const event of ownedEvents) {
+    for (const event of aboveThresholdEvents) {
       try {
         const wallet = walletMap.get(event.wallet_id);
         const walletAddress = wallet?.wallet_id || event.wallet_id;
