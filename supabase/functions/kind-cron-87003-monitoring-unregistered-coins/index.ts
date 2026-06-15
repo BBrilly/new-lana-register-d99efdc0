@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
     console.log('📡 Fetching relay configuration...');
     const { data: sysParams, error: sysError } = await supabase
       .from('system_parameters')
-      .select('relays, pubkey')
+      .select('relays, pubkey, freeze_lana_account_above')
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -260,6 +260,9 @@ Deno.serve(async (req) => {
 
     const relays = (sysParams.relays as string[]).filter((r: string) => r.startsWith('wss://'));
     console.log(`📡 Using ${relays.length} relays:`, relays);
+
+    const threshold = Number((sysParams as any).freeze_lana_account_above) || 100;
+    console.log(`🪙 Unregistered notify threshold: ${threshold} LANA`);
 
     // 3. Fetch unpublished unregistered_lana_events (also fetch those needing DM retry)
     console.log('📋 Fetching unpublished unregistered_lana_events...');
@@ -325,6 +328,18 @@ Deno.serve(async (req) => {
 
     console.log(`📋 ${ownedEvents.length} events belong to owned wallets (is_owned = true)`);
 
+    // Filter out events below threshold — they remain in queue so future aggregation can trigger
+    const aboveThresholdEvents = ownedEvents.filter((event) => {
+      const amt = Number(event.unregistered_amount) || 0;
+      if (amt < threshold) {
+        console.log(`⏭️ Skipping event ${event.id} - amount ${amt} LANA < threshold ${threshold}`);
+        return false;
+      }
+      return true;
+    });
+    const belowThresholdCount = ownedEvents.length - aboveThresholdEvents.length;
+    console.log(`📋 ${aboveThresholdEvents.length} events ≥ threshold; ${belowThresholdCount} below threshold`);
+
     // 5. Process each owned event
     let successCount = 0;
     let errorCount = 0;
@@ -333,7 +348,7 @@ Deno.serve(async (req) => {
     let skippedCount = unpublishedEvents.length - ownedEvents.length;
     const processedEvents: Array<{ id: string; eventId: string; success: boolean; dmSent: boolean }> = [];
 
-    for (const event of ownedEvents) {
+    for (const event of aboveThresholdEvents) {
       try {
         const wallet = walletMap.get(event.wallet_id);
         const walletAddress = wallet?.wallet_id || event.wallet_id;
@@ -446,6 +461,9 @@ Deno.serve(async (req) => {
     console.log('📊 Final summary:', {
       total: unpublishedEvents.length,
       ownedEvents: ownedEvents.length,
+      belowThreshold: belowThresholdCount,
+      threshold,
+      processed: aboveThresholdEvents.length,
       skipped: skippedCount,
       kind87003_success: successCount,
       kind87003_errors: errorCount,
@@ -456,10 +474,12 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Processed ${ownedEvents.length} events (${skippedCount} skipped)`,
+        message: `Processed ${aboveThresholdEvents.length} events (${skippedCount} skipped, ${belowThresholdCount} below threshold ${threshold})`,
         total: unpublishedEvents.length,
-        processed: ownedEvents.length,
+        processed: aboveThresholdEvents.length,
         skipped: skippedCount,
+        belowThreshold: belowThresholdCount,
+        threshold,
         kind87003: { successful: successCount, failed: errorCount },
         dm: { sent: dmSentCount, failed: dmFailCount },
         events: processedEvents,

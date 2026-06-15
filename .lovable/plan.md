@@ -1,36 +1,21 @@
-## Cilj
-Prikazati **dejansko število blockchain transakcij registriranih LAN**, brez change transakcij — tako v UI (`LandingPage`) kot v javnem API-ju (`public-stats`).
 
 ## Problem
-Trenutno se štejejo **DB vrstice** v `transactions` tabeli, kjer ena blockchain TX z več prejemniki ustvari več vrstic. Posledica: številka 672 (z 1000-row limitom) oz. 1244 (s paginacijo) namesto pravilnih ~42.
+The cron `kind-cron-87003-monitoring-unregistered-coins` publishes Kind 87003 and sends NIP-04 DMs for **every** unregistered_lana_event, regardless of size. We already have a system parameter `freeze_lana_account_above` (currently 100) which is the threshold above which an account is frozen. Below that, the amount is tolerated and should not trigger a notification.
 
-## Rešitev: štej distinct TX hash
+## Fix
+In `supabase/functions/kind-cron-87003-monitoring-unregistered-coins/index.ts`:
 
-Iz polja `notes` izvlečemo blockchain TX hash z regex `Blockchain transaction ([a-f0-9]{64})`.
+1. After fetching `system_parameters`, also read `freeze_lana_account_above` (fallback 100 if missing/null).
+2. After filtering `ownedEvents`, add a second filter:
+   - Skip events where `unregistered_amount < threshold`.
+   - Log: `⏭️ Skipping event <id> - amount X < threshold Y`.
+   - Increment `skippedCount` (or a new `belowThresholdCount`) and do NOT mark them published — they remain in the queue so that if more unregistered coins arrive for the same wallet/TX and push the aggregated total ≥ threshold, the next cron run will publish.
+3. Include the count in the summary response (`belowThreshold: N`).
 
-Logika štetja:
-1. Vse vrstice grupiramo po TX hash.
-2. TX hash šteje v skupno številko **če in samo če** vsaj ena njegova vrstica ni čisti change (`from_wallet_id IS NULL OR to_wallet_id IS NULL OR from_wallet_id <> to_wallet_id`).
-3. Skupni znesek (`total_amount_lana`) seštejemo samo iz ne-change vrstic znotraj teh TX hash-ev (sicer bi double-counting).
-4. Vrstice brez TX hash v notes (npr. interni vnosi) tretiramo kot ločene "transakcije" — vsak ID = ena TX, prav tako filtrirano za change.
+## Out of scope
+- No change to the DB trigger `detect_unregistered_lana` (we still record all events for auditing).
+- No change to the auto-freeze logic.
+- No UI changes.
 
-## Spremembe v datotekah
-
-### 1. `supabase/functions/public-stats/index.ts`
-- Razširi SELECT s `id, notes` (poleg `created_at, amount, from_wallet_id, to_wallet_id`).
-- Po fetchu paginiranih TX-jev:
-  - Izlušči `tx_hash` iz `notes` (regex).
-  - Grupiraj po `tx_hash` (oz. po `id` če hash manjka).
-  - Za vsako skupino: če obstaja vsaj ena ne-change vrstica → šteje kot 1 TX, znesek = vsota `amount` ne-change vrstic.
-- Tako izračunani `transactions_today_count`, `transactions_today_total_lana`, `transactions_yesterday_*`, `transactions_per_day_last_30`.
-- Enako za `transactions_all_time_count` in `transactions_all_time_total_lana`.
-
-### 2. `src/pages/LandingPage.tsx`
-- V query, ki vleče današnje/učerajšnje TX-je, dodaj `id, notes` in apliciraj enako distinct-hash logiko za prikazano številko.
-- Dodaj `.limit(10000)` (oz. paginacijo) da se izognemo 1000-row limitu.
-
-### 3. `src/pages/PublicApiPage.tsx` (opcijsko)
-- Posodobi opis polj v shema bloku: pojasni, da `transactions_*_count` šteje **distinct blockchain transakcije**, ne DB vrstic, in da so change/self-transfer transakcije izključene.
-
-## Validacija po implementaciji
-SQL že potrjuje: za danes vrne **42** ne-change blockchain TX-jev (od 54 distinct hash-ev). To bo nova prikazana številka.
+## Files
+- `supabase/functions/kind-cron-87003-monitoring-unregistered-coins/index.ts`
