@@ -225,6 +225,14 @@ const OverLimitHoldersTab = () => {
                           <TableCell className="text-right font-semibold">
                             {fmtLana(h.totalBalance)}
                           </TableCell>
+                          <TableCell className={cn(
+                            "text-right font-medium",
+                            isOver ? "text-sky-700 dark:text-sky-300" : "text-muted-foreground"
+                          )}>
+                            {limit != null && h.totalBalance > limit
+                              ? `+${fmtLana(h.totalBalance - limit)}`
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-right text-muted-foreground">
                             {eurRate > 0 ? `€${fmtEur(h.totalBalance * eurRate)}` : "—"}
                           </TableCell>
