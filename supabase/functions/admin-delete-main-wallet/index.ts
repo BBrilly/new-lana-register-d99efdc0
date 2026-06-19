@@ -129,11 +129,7 @@ Deno.serve(async (req) => {
     log(`✓ Related wallets: ${relatedWallets?.length || 0} (main entries: ${mainEntries.length}, others: ${otherWallets.length})`);
 
     if (otherWallets.length > 0) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: `User still owns ${otherWallets.length} other wallet(s). Delete those first.`,
-        wallets: otherWallets, steps,
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      log(`⚠ User owns ${otherWallets.length} other wallet(s) — they will also be archived and deleted`);
     }
 
     // Load NSEC + relays
@@ -208,29 +204,45 @@ Deno.serve(async (req) => {
     // ─────────────────────────────────────────────────────────
     // STEP 2: All relays accepted — now safe to delete locally
     // ─────────────────────────────────────────────────────────
-    const { error: archErr } = await supabase.from("deleted_wallets").insert({
-      original_wallet_uuid: mainWallet.id,
-      wallet_id: mainWallet.wallet_id,
-      wallet_type: "main_wallet",
-      nostr_hex_id: ownerHex,
-      main_wallet_id: mainWallet.id,
-      reason: `admin_deleted_main_wallet | admin_nostr_hex_id: ${adminHex} | name: ${mainWallet.name || ""}`,
-    });
+    const archiveRows = [
+      {
+        original_wallet_uuid: mainWallet.id,
+        wallet_id: mainWallet.wallet_id,
+        wallet_type: "main_wallet",
+        nostr_hex_id: ownerHex,
+        main_wallet_id: mainWallet.id,
+        reason: `admin_deleted_main_wallet | admin_nostr_hex_id: ${adminHex} | name: ${mainWallet.name || ""}`,
+      },
+      ...(relatedWallets || []).map((w: any) => ({
+        original_wallet_uuid: w.id,
+        wallet_id: w.wallet_id,
+        wallet_type: w.wallet_type || null,
+        nostr_hex_id: ownerHex,
+        main_wallet_id: mainWallet.id,
+        reason: `admin_deleted_with_main | admin_nostr_hex_id: ${adminHex} | frozen: ${!!w.frozen}`,
+      })),
+    ];
+
+    const { error: archErr } = await supabase.from("deleted_wallets").insert(archiveRows);
     if (archErr) {
       log(`✗ Archive failed: ${archErr.message}`);
       return new Response(JSON.stringify({ success: false, error: "Archive failed after relay publish: " + archErr.message, steps }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    log(`✓ Archived to deleted_wallets`);
+    log(`✓ Archived ${archiveRows.length} row(s) to deleted_wallets`);
 
-    if (mainEntries.length > 0) {
-      const ids = mainEntries.map((w: any) => w.id);
-      const { error: delWErr } = await supabase.from("wallets").delete().in("id", ids);
+    let walletsDeleted = 0;
+    if ((relatedWallets || []).length > 0) {
+      const { error: delWErr, count } = await supabase
+        .from("wallets")
+        .delete({ count: "exact" })
+        .eq("main_wallet_id", mainWallet.id);
       if (delWErr) {
         log(`⚠ Failed to delete wallets rows: ${delWErr.message}`);
       } else {
-        log(`✓ Deleted ${ids.length} wallets row(s)`);
+        walletsDeleted = count ?? (relatedWallets || []).length;
+        log(`✓ Deleted ${walletsDeleted} wallets row(s)`);
       }
     }
 
@@ -246,8 +258,10 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Main wallet for ${ownerHex.substring(0, 12)}… deleted; KIND 30889 retracted on all ${relays.length} relays`,
+      message: `Main wallet for ${ownerHex.substring(0, 12)}… deleted; ${walletsDeleted} related wallet(s) archived & removed; KIND 30889 retracted on all ${relays.length} relays`,
       relays_count: relays.length,
+      wallets_archived: archiveRows.length,
+      wallets_deleted: walletsDeleted,
       steps,
       correlation_id: correlationId,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

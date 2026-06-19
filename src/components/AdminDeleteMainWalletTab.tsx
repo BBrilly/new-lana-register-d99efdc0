@@ -60,7 +60,7 @@ const AdminDeleteMainWalletTab = () => {
       : 0)
     : 0;
 
-  const canDelete = !!mainWallet && otherWallets.length === 0;
+  const canDelete = !!mainWallet;
 
   const hexToBytes = (hex: string) =>
     new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
@@ -149,7 +149,7 @@ const AdminDeleteMainWalletTab = () => {
       if (data?.steps) setLastSteps(data.steps);
       if (!response.ok) throw new Error(data?.error || `Delete failed (${response.status})`);
       if (!data?.success) throw new Error(data?.error || "Unknown error");
-      toast.success("Main wallet deleted and KIND 30889 retracted from all relays");
+      toast.success(`Main wallet + ${data?.wallets_deleted ?? 0} related wallet(s) deleted and archived`);
       queryClient.invalidateQueries({ queryKey: ["frozen-wallets-admin-delete"] });
       reset();
       setHexInput("");
@@ -286,12 +286,11 @@ const AdminDeleteMainWalletTab = () => {
                   Delete Main Wallet
                 </Button>
               </div>
-              {!canDelete && (
+              {related.length > 0 && (
                 <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
                   <p className="text-foreground">
-                    Cannot delete: user still owns {otherWallets.length} other wallet(s).
-                    Delete those from the Delete Frozen tab first.
+                    All {related.length} related wallet(s) will be archived in <strong>deleted_wallets</strong> and removed.
                   </p>
                 </div>
               )}

@@ -1,33 +1,36 @@
-## Problem
+## Cilj
 
-Na `/unregistered-over-limit` se prikazujejo dogodki, ki imajo `nostr_87003_published = true`, vendar je njihov `unregistered_amount` zelo majhen (npr. 0.00000001 LANA → prikazano kot "0"). Ti niso resnično over-limit.
+Dovoli admin brisanje main denarnice tudi, ko ima uporabnik še druge (ne-main) denarnice. Vse pripadajoče denarnice se arhivirajo v `deleted_wallets` in nato odstranijo iz `wallets`, glavni zapis pa iz `main_wallets`.
 
-Dva napaki:
+## Spremembe
 
-1. **Napačna enota zneska** — hook deli `unregistered_amount` z `1e8`, vendar je vrednost v bazi že v **LANA**, ne v lanoshijih (min 0.00000001, max 100000). Zato vsi mali zneski izgledajo kot "0".
-2. **Manjka limit filter** — stran mora prikazati le tiste, katerih znesek dejansko presega prag `freeze_lana_account_above` iz `system_parameters` (trenutno = 100 LANA).
+### `supabase/functions/admin-delete-main-wallet/index.ts`
+- **Odstrani blokado** `if (otherWallets.length > 0) → 400`. Nadomesti z opozorilom v log (`⚠ User owns N other wallets — they will also be archived and deleted`).
+- **Nostr publish** (KIND 5 + tombstone 30889) ostane nespremenjen — tombstone na `d=nostr_hex_id` izbriše celoten listing uporabnika, kar pokrije vse naslove naenkrat.
+- **Arhiv v `deleted_wallets`**: poleg trenutnega `main_wallet` zapisa vstavi tudi po eno vrstico za vsako vrstico v `relatedWallets` (tako main entries kot others). Vsaka vrstica:
+  - `original_wallet_uuid = wallet.id`
+  - `wallet_id = wallet.wallet_id`
+  - `wallet_type = wallet.wallet_type` (originalni tip)
+  - `nostr_hex_id = ownerHex`
+  - `main_wallet_id = mainWallet.id`
+  - `reason = "admin_deleted_with_main | admin_nostr_hex_id: <adminHex> | frozen: <bool>"`
+  - Vse vstavi v enem `insert([...])` klicu.
+- **Brisanje iz `wallets`**: `delete().eq("main_wallet_id", mainWallet.id)` izbriše vse pripadajoče vrstice (main + others) v enem klicu — namesto trenutnega `delete().in("id", mainEntries.ids)`.
+- **Brisanje iz `main_wallets`** ostane.
+- Response sporočilo dopolni: `wallets_archived: N, wallets_deleted: N`.
 
-## Rešitev
+### `src/components/AdminDeleteMainWalletTab.tsx`
+- `canDelete = !!mainWallet` (odstrani pogoj `otherWallets.length === 0`).
+- Odstrani warning blok "Cannot delete: user still owns N other wallet(s)".
+- V `AlertDialog` step 1 dodaj jasno opozorilo: "Vse pripadajoče denarnice (skupaj N) bodo arhivirane in izbrisane." — pokaže se ne glede na število.
+- Toast po uspehu: "Main wallet + N other wallets deleted and archived."
 
-### `src/hooks/useUnregisteredLanaEvents.ts`
-- Odstrani deljenje z `1e8` — `unregistered_amount` obravnavaj kot LANA neposredno.
-- Naloži `freeze_lana_account_above` iz `system_parameters` (parseFloat) in ga vrni kot `limit`.
-- Dodaj boolean parameter `requireOverLimit` (default false): ko je `true`, filtriraj `rows` na `unregistered_amount >= limit`.
-- `totalLana` se izračuna iz filtriranih vrstic brez deljenja.
+## Tehnične opombe
 
-### `src/components/UnregisteredLanaTable.tsx`
-- Formatter `fmtLana` ne deli več z 1e8 (vrednost je že LANA).
-- V naslovni vrstici dodaj `Badge` z prikazanim limitom (npr. `Limit: ≥ 100 LANA`) kadar je posredovan.
-
-### `src/pages/UnregisteredOverLimitPage.tsx`
-- Kliče `useUnregisteredLanaEvents(true, { requireOverLimit: true })`.
-- Subtitle posodobljen: "Events published as Kind 87003 with amount above the freeze limit."
-
-### `src/pages/UnregisteredDustPage.tsx`
-- Ostane nespremenjen za filter, samo popravek enote pride preko hooka/tabele.
-
-Brez sprememb edge funkcij, brez sprememb sheme.
+- `deleted_wallets` že podpira INSERT za `authenticated` in nima unique constraintov na `original_wallet_uuid`, tako da bulk insert deluje.
+- Stanja (balance) ne shranjujemo — `deleted_wallets` nima stolpca za znesek; arhiviramo identiteto naslova (`wallet_id`, `wallet_type`, `main_wallet_id`, `nostr_hex_id`). To je v skladu z obstoječim modelom arhiviranja v drugih admin delete funkcijah.
+- Brez sprememb sheme, brez sprememb RLS.
 
 ## Summary
 
-Popravi enoto prikaza (vrednost je že v LANA, ne lanoshi) in doda filter po `system_parameters.freeze_lana_account_above`, da stran prikaže res samo dogodke, ki so presegli limit.
+Admin lahko zdaj izbriše main denarnico ne glede na število drugih denarnic uporabnika. Edge funkcija najprej objavi NIP-09 deletion + tombstone 30889, nato arhivira VSE pripadajoče vrstice v `deleted_wallets` in jih izbriše iz `wallets` ter `main_wallets`. UI odstrani blokado in opozorilo.
