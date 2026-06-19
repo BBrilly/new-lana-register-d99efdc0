@@ -50,7 +50,10 @@ const UnregisteredLanaTable = ({
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {limit != null && (
+            <Badge variant="outline" className="text-sm">Limit: ≥ {limit.toLocaleString()} LANA</Badge>
+          )}
           <Badge variant="secondary" className="text-sm">Count: {count}</Badge>
           <Badge variant="secondary" className="text-sm font-mono">
             Total: {totalLana.toLocaleString(undefined, { maximumFractionDigits: 8 })} LANA
