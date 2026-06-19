@@ -20,9 +20,10 @@ interface Props {
   sortField: SortField;
   sortDirection: "asc" | "desc";
   toggleSort: (f: SortField) => void;
+  limit?: number | null;
 }
 
-const fmtLana = (lanoshi: number) => (lanoshi / 1e8).toLocaleString(undefined, { maximumFractionDigits: 8 });
+const fmtLana = (lana: number) => lana.toLocaleString(undefined, { maximumFractionDigits: 8 });
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return d.toLocaleString();
