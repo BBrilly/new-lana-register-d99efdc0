@@ -24,6 +24,8 @@ import UsersAggregatedPage from "./pages/UsersAggregatedPage";
 import LanaholdersPage from "./pages/LanaholdersPage";
 import RetailWalletsPage from "./pages/RetailWalletsPage";
 import AdminFreezePage from "./pages/AdminFreezePage";
+import UnregisteredOverLimitPage from "./pages/UnregisteredOverLimitPage";
+import UnregisteredDustPage from "./pages/UnregisteredDustPage";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +56,8 @@ const App = () => (
           <Route path="/users-aggregated" element={<UsersAggregatedPage />} />
           <Route path="/lanaholders" element={<LanaholdersPage />} />
           <Route path="/retail-wallets" element={<RetailWalletsPage />} />
+          <Route path="/unregistered-over-limit" element={<UnregisteredOverLimitPage />} />
+          <Route path="/unregistered-dust" element={<UnregisteredDustPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

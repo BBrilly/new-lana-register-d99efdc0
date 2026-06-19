@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity, Crown, Store } from "lucide-react";
+import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity, Crown, Store, AlertTriangle, Sparkles } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,8 @@ const LINKS = [
   { path: "/retail-wallets", label: "Retail Wallets", icon: Store },
   { path: "/lana-discount", label: "Lana.Discount", icon: Tag },
   { path: "/frozen-wallets", label: "Frozen Wallets", icon: Snowflake },
+  { path: "/unregistered-over-limit", label: "Over-Limit Lanas", icon: AlertTriangle },
+  { path: "/unregistered-dust", label: "Dust Lanas", icon: Sparkles },
   { path: "/public-api", label: "Public Data", icon: Globe },
   { path: "/api-docs", label: "API Docs", icon: Database },
   { path: "/api-docs#nostr-standards", label: "Nostr Standards", icon: Activity },
