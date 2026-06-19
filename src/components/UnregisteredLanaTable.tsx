@@ -20,9 +20,10 @@ interface Props {
   sortField: SortField;
   sortDirection: "asc" | "desc";
   toggleSort: (f: SortField) => void;
+  limit?: number | null;
 }
 
-const fmtLana = (lanoshi: number) => (lanoshi / 1e8).toLocaleString(undefined, { maximumFractionDigits: 8 });
+const fmtLana = (lana: number) => lana.toLocaleString(undefined, { maximumFractionDigits: 8 });
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return d.toLocaleString();
@@ -31,7 +32,7 @@ const truncate = (s: string, n = 14) => (s.length <= n ? s : `${s.slice(0, 6)}â€
 
 const UnregisteredLanaTable = ({
   rows, isLoading, totalLana, count, title, subtitle, emptyMessage,
-  showFrozenColumn, sortField, sortDirection, toggleSort,
+  showFrozenColumn, sortField, sortDirection, toggleSort, limit,
 }: Props) => {
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -49,7 +50,10 @@ const UnregisteredLanaTable = ({
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {limit != null && (
+            <Badge variant="outline" className="text-sm">Limit: â‰¥ {limit.toLocaleString()} LANA</Badge>
+          )}
           <Badge variant="secondary" className="text-sm">Count: {count}</Badge>
           <Badge variant="secondary" className="text-sm font-mono">
             Total: {totalLana.toLocaleString(undefined, { maximumFractionDigits: 8 })} LANA

@@ -17,9 +17,15 @@ export interface UnregisteredLanaRow {
 
 export type SortField = "detected_at" | "unregistered_amount";
 
-export const useUnregisteredLanaEvents = (published: boolean) => {
+interface Options {
+  requireOverLimit?: boolean;
+}
+
+export const useUnregisteredLanaEvents = (published: boolean, options: Options = {}) => {
+  const { requireOverLimit = false } = options;
   const [rows, setRows] = useState<UnregisteredLanaRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [limit, setLimit] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>("detected_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -28,6 +34,17 @@ export const useUnregisteredLanaEvents = (published: boolean) => {
     const load = async () => {
       setIsLoading(true);
       try {
+        // Load freeze limit from system_parameters
+        const { data: sp } = await supabase
+          .from("system_parameters")
+          .select("freeze_lana_account_above")
+          .limit(1)
+          .maybeSingle();
+        const parsedLimit = sp?.freeze_lana_account_above != null
+          ? parseFloat(String(sp.freeze_lana_account_above))
+          : null;
+        if (!cancelled) setLimit(Number.isFinite(parsedLimit as number) ? (parsedLimit as number) : null);
+
         const all: any[] = [];
         const PAGE = 1000;
         let offset = 0;
@@ -74,8 +91,13 @@ export const useUnregisteredLanaEvents = (published: boolean) => {
     return () => { cancelled = true; };
   }, [published]);
 
+  const filtered = useMemo(() => {
+    if (!requireOverLimit || limit == null) return rows;
+    return rows.filter(r => r.unregistered_amount >= limit);
+  }, [rows, requireOverLimit, limit]);
+
   const sorted = useMemo(() => {
-    const arr = [...rows];
+    const arr = [...filtered];
     arr.sort((a, b) => {
       const dir = sortDirection === "desc" ? -1 : 1;
       if (sortField === "unregistered_amount") {
@@ -84,7 +106,7 @@ export const useUnregisteredLanaEvents = (published: boolean) => {
       return (new Date(a.detected_at).getTime() - new Date(b.detected_at).getTime()) * dir;
     });
     return arr;
-  }, [rows, sortField, sortDirection]);
+  }, [filtered, sortField, sortDirection]);
 
   const toggleSort = (f: SortField) => {
     if (sortField === f) setSortDirection(d => (d === "asc" ? "desc" : "asc"));
@@ -92,9 +114,9 @@ export const useUnregisteredLanaEvents = (published: boolean) => {
   };
 
   const totalLana = useMemo(
-    () => rows.reduce((s, r) => s + r.unregistered_amount, 0) / 1e8,
-    [rows]
+    () => filtered.reduce((s, r) => s + r.unregistered_amount, 0),
+    [filtered]
   );
 
-  return { rows: sorted, isLoading, sortField, sortDirection, toggleSort, totalLana, count: rows.length };
+  return { rows: sorted, isLoading, sortField, sortDirection, toggleSort, totalLana, count: filtered.length, limit };
 };
