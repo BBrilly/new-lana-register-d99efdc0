@@ -7,7 +7,8 @@ import UnregisteredLanaTable from "@/components/UnregisteredLanaTable";
 
 const UnregisteredOverLimitPage = () => {
   const navigate = useNavigate();
-  const { rows, isLoading, totalLana, count, sortField, sortDirection, toggleSort } = useUnregisteredLanaEvents(true);
+  const { rows, isLoading, totalLana, count, sortField, sortDirection, toggleSort, limit } =
+    useUnregisteredLanaEvents(true, { requireOverLimit: true });
 
   return (
     <div className="min-h-screen bg-background">
@@ -19,10 +20,11 @@ const UnregisteredOverLimitPage = () => {
           <UnregisteredLanaTable
             rows={rows} isLoading={isLoading} totalLana={totalLana} count={count}
             title="Over-Limit Unregistered Lanas"
-            subtitle="Events published as Kind 87003 — exceeded limit and triggered wallet freeze."
+            subtitle="Events published as Kind 87003 with amount above the freeze limit."
             emptyMessage="No over-limit unregistered Lanas."
             showFrozenColumn
             sortField={sortField} sortDirection={sortDirection} toggleSort={toggleSort}
+            limit={limit}
           />
         </Card>
       </div>
