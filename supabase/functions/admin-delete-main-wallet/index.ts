@@ -246,6 +246,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Clear FK dependents before deleting main_wallets row
+    const { error: delPropErr, count: propCount } = await supabase
+      .from("subscription_proposals")
+      .delete({ count: "exact" })
+      .eq("main_wallet_id", mainWallet.id);
+    if (delPropErr) {
+      log(`⚠ Failed to delete subscription_proposals: ${delPropErr.message}`);
+    } else if ((propCount ?? 0) > 0) {
+      log(`✓ Deleted ${propCount} subscription_proposals row(s)`);
+    }
+
     const { error: delMainErr } = await supabase.from("main_wallets").delete().eq("id", mainWallet.id);
     if (delMainErr) {
       log(`✗ main_wallets delete failed: ${delMainErr.message}`);
