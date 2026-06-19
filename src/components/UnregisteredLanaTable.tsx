@@ -32,7 +32,7 @@ const truncate = (s: string, n = 14) => (s.length <= n ? s : `${s.slice(0, 6)}â€
 
 const UnregisteredLanaTable = ({
   rows, isLoading, totalLana, count, title, subtitle, emptyMessage,
-  showFrozenColumn, sortField, sortDirection, toggleSort,
+  showFrozenColumn, sortField, sortDirection, toggleSort, limit,
 }: Props) => {
   const [copied, setCopied] = useState<string | null>(null);
 
