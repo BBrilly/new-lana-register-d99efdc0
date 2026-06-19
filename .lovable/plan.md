@@ -1,36 +1,27 @@
-## Cilj
+## Težava
 
-Dovoli admin brisanje main denarnice tudi, ko ima uporabnik še druge (ne-main) denarnice. Vse pripadajoče denarnice se arhivirajo v `deleted_wallets` in nato odstranijo iz `wallets`, glavni zapis pa iz `main_wallets`.
+Na sliki je toast: **"User still owns 8 other wallet(s). Delete those first."** — to sporočilo prihaja iz **stare/zastarele deployane različice** edge funkcije `admin-delete-main-wallet`. V trenutni izvorni kodi (`supabase/functions/admin-delete-main-wallet/index.ts`) je blokada **že odstranjena** in funkcija:
 
-## Spremembe
+- Naredi log opozorilo namesto 400 napake (vrstica 131–133)
+- Arhivira **vse** povezane denarnice v `deleted_wallets` (vrstica 207–224)
+- Izbriše vse vrstice iz `wallets` preko `eq("main_wallet_id", …)` (vrstica 237–240)
+- Izbriše glavni zapis iz `main_wallets`
 
-### `supabase/functions/admin-delete-main-wallet/index.ts`
-- **Odstrani blokado** `if (otherWallets.length > 0) → 400`. Nadomesti z opozorilom v log (`⚠ User owns N other wallets — they will also be archived and deleted`).
-- **Nostr publish** (KIND 5 + tombstone 30889) ostane nespremenjen — tombstone na `d=nostr_hex_id` izbriše celoten listing uporabnika, kar pokrije vse naslove naenkrat.
-- **Arhiv v `deleted_wallets`**: poleg trenutnega `main_wallet` zapisa vstavi tudi po eno vrstico za vsako vrstico v `relatedWallets` (tako main entries kot others). Vsaka vrstica:
-  - `original_wallet_uuid = wallet.id`
-  - `wallet_id = wallet.wallet_id`
-  - `wallet_type = wallet.wallet_type` (originalni tip)
-  - `nostr_hex_id = ownerHex`
-  - `main_wallet_id = mainWallet.id`
-  - `reason = "admin_deleted_with_main | admin_nostr_hex_id: <adminHex> | frozen: <bool>"`
-  - Vse vstavi v enem `insert([...])` klicu.
-- **Brisanje iz `wallets`**: `delete().eq("main_wallet_id", mainWallet.id)` izbriše vse pripadajoče vrstice (main + others) v enem klicu — namesto trenutnega `delete().in("id", mainEntries.ids)`.
-- **Brisanje iz `main_wallets`** ostane.
-- Response sporočilo dopolni: `wallets_archived: N, wallets_deleted: N`.
+Toast, ki ga uporabnik vidi, **ne obstaja v izvorni kodi** — to je dokaz, da na strežniku še teče prejšnja različica funkcije.
 
-### `src/components/AdminDeleteMainWalletTab.tsx`
-- `canDelete = !!mainWallet` (odstrani pogoj `otherWallets.length === 0`).
-- Odstrani warning blok "Cannot delete: user still owns N other wallet(s)".
-- V `AlertDialog` step 1 dodaj jasno opozorilo: "Vse pripadajoče denarnice (skupaj N) bodo arhivirane in izbrisane." — pokaže se ne glede na število.
-- Toast po uspehu: "Main wallet + N other wallets deleted and archived."
+## Plan
 
-## Tehnične opombe
+### 1. Redeploy `admin-delete-main-wallet`
+Ponovno deployaj edge funkcijo brez sprememb kode, da se na produkciji uporabi trenutna različica iz repozitorija.
 
-- `deleted_wallets` že podpira INSERT za `authenticated` in nima unique constraintov na `original_wallet_uuid`, tako da bulk insert deluje.
-- Stanja (balance) ne shranjujemo — `deleted_wallets` nima stolpca za znesek; arhiviramo identiteto naslova (`wallet_id`, `wallet_type`, `main_wallet_id`, `nostr_hex_id`). To je v skladu z obstoječim modelom arhiviranja v drugih admin delete funkcijah.
-- Brez sprememb sheme, brez sprememb RLS.
+### 2. Verifikacija
+Po deployu poženi novo brisanje na isti glavni denarnici. Pričakovan rezultat:
+- Brez toast napake
+- Toast: `Main wallet + 9 related wallet(s) deleted and archived`
+- Execution log prikaže: `⚠ User owns 8 other wallet(s) — they will also be archived and deleted` → `✓ Archived 9 row(s) to deleted_wallets` → `✓ Deleted 9 wallets row(s)` → `✓ Deleted from main_wallets` → `✅ DONE`
 
-## Summary
+### Tehnične opombe
 
-Admin lahko zdaj izbriše main denarnico ne glede na število drugih denarnic uporabnika. Edge funkcija najprej objavi NIP-09 deletion + tombstone 30889, nato arhivira VSE pripadajoče vrstice v `deleted_wallets` in jih izbriše iz `wallets` ter `main_wallets`. UI odstrani blokado in opozorilo.
+Nobene spremembe sheme ali RLS. Brez sprememb kode v `src/`. Logika brisanja (Nostr KIND 5 + tombstone KIND 30889 + arhiviranje v `deleted_wallets` + brisanje iz `wallets` in `main_wallets`) je že implementirana — potrebujemo le svež deploy.
+
+Če po redeployu napaka ostane, bo naslednji korak preveriti `edge_function_logs` za točen vir 400 odgovora, ker tega sporočila v repo-ju ni.
