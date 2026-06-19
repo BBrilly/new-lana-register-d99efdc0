@@ -1,55 +1,33 @@
-# Novi javni strani: Unregistered Lanas (Over-Limit & Dust)
+## Problem
 
-## Cilj
-Dve ločeni javni strani s seznamom `unregistered_lana_events`:
-- **Over-Limit (Frozen)** — vse vrstice z `nostr_87003_published = true` (objavljeno na relay, je sprožilo freeze).
-- **Dust** — vse vrstice z `nostr_87003_published = false` (premajhne, niso bile objavljene / kandidatke za izbris).
+Na `/unregistered-over-limit` se prikazujejo dogodki, ki imajo `nostr_87003_published = true`, vendar je njihov `unregistered_amount` zelo majhen (npr. 0.00000001 LANA → prikazano kot "0"). Ti niso resnično over-limit.
 
-Obe strani sta dodani kot novi povezavi v desni `PublicLinksSidebar`.
+Dva napaki:
 
-## Datoteke
+1. **Napačna enota zneska** — hook deli `unregistered_amount` z `1e8`, vendar je vrednost v bazi že v **LANA**, ne v lanoshijih (min 0.00000001, max 100000). Zato vsi mali zneski izgledajo kot "0".
+2. **Manjka limit filter** — stran mora prikazati le tiste, katerih znesek dejansko presega prag `freeze_lana_account_above` iz `system_parameters` (trenutno = 100 LANA).
 
-### Nove
-- `src/pages/UnregisteredOverLimitPage.tsx` — javna stran, route `/unregistered-over-limit`.
-- `src/pages/UnregisteredDustPage.tsx` — javna stran, route `/unregistered-dust`.
-- `src/hooks/useUnregisteredLanaEvents.ts` — skupni hook: parameter `published: boolean`, paginated fetch (1000/req, da obide 1000-row limit), join na `wallets` (wallet_id, lana_address, wallet_type, currency, frozen) in `main_wallets` (nostr_hex_id, owner_name če obstaja). Vrne sortirane podatke + skupni znesek.
+## Rešitev
 
-### Spremenjene
-- `src/App.tsx` — dodaj importa in oba `<Route>` zapisa nad catch-all.
-- `src/components/PublicLinksSidebar.tsx` — dodaj v `LINKS` array dva nova vnosa (ikoni: `AlertTriangle` za over-limit, `Sparkles` ali `Dot` za dust).
+### `src/hooks/useUnregisteredLanaEvents.ts`
+- Odstrani deljenje z `1e8` — `unregistered_amount` obravnavaj kot LANA neposredno.
+- Naloži `freeze_lana_account_above` iz `system_parameters` (parseFloat) in ga vrni kot `limit`.
+- Dodaj boolean parameter `requireOverLimit` (default false): ko je `true`, filtriraj `rows` na `unregistered_amount >= limit`.
+- `totalLana` se izračuna iz filtriranih vrstic brez deljenja.
 
-## Vsebina strani (oba uporabljata isti layout)
+### `src/components/UnregisteredLanaTable.tsx`
+- Formatter `fmtLana` ne deli več z 1e8 (vrednost je že LANA).
+- V naslovni vrstici dodaj `Badge` z prikazanim limitom (npr. `Limit: ≥ 100 LANA`) kadar je posredovan.
 
-Layout enak kot `AllWalletsPage`: `Back` gumb → `Card` → naslov, podnaslov, total amount badge → tabela.
+### `src/pages/UnregisteredOverLimitPage.tsx`
+- Kliče `useUnregisteredLanaEvents(true, { requireOverLimit: true })`.
+- Subtitle posodobljen: "Events published as Kind 87003 with amount above the freeze limit."
 
-Tabela (vrstice = `unregistered_lana_events`):
-| Stolpec | Vir |
-|---|---|
-| Detected At | `detected_at` (format datum + ura) |
-| Wallet | `wallets.lana_address` (truncate + copy) |
-| Type | `wallets.wallet_type` |
-| Amount (LANA) | `unregistered_amount / 1e8` (8 decimalk) |
-| Notes | `notes` (truncate, tooltip) |
-| 87003 Event | link na nostr event (če `nostr_87003_event_id` obstaja) |
-| Status | frozen badge če `wallets.frozen` (samo over-limit stran) |
+### `src/pages/UnregisteredDustPage.tsx`
+- Ostane nespremenjen za filter, samo popravek enote pride preko hooka/tabele.
 
-Sort: privzeto `detected_at DESC`, klik na headerje sortira (Amount, Detected).
+Brez sprememb edge funkcij, brez sprememb sheme.
 
-Footer/header: `Total: X LANA` (vsota `unregistered_amount/1e8`) in `Count: N`.
+## Summary
 
-Empty state:
-- Over-Limit: "No over-limit unregistered Lanas — vse je v okvirih."
-- Dust: "No dust events."
-
-## PublicLinksSidebar zaporedje
-Vstavi takoj za `Frozen Wallets`:
-```
-{ path: "/unregistered-over-limit", label: "Over-Limit Lanas", icon: AlertTriangle },
-{ path: "/unregistered-dust", label: "Dust Lanas", icon: Sparkles },
-```
-
-## Tehnično
-- Javni dostop (brez auth-gate-a, kot ostale public strani). `unregistered_lana_events` ima 4 policies — predvidoma anon read; če query vrne 0 brez napake, dodam migracijo `GRANT SELECT ... TO anon` + ustrezno policy (preverim šele po prvem zagonu, ne v tej iteraciji).
-- Pagination loop: `range(offset, offset+999)` dokler vrne < 1000 (skladno z memory pravilom).
-- `ReturnType<typeof setTimeout>` (nismo na node tipih).
-- Brez sprememb edge funkcij, brez sprememb business logike — samo prikaz.
+Popravi enoto prikaza (vrednost je že v LANA, ne lanoshi) in doda filter po `system_parameters.freeze_lana_account_above`, da stran prikaže res samo dogodke, ki so presegli limit.
