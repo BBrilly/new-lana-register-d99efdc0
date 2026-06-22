@@ -227,9 +227,11 @@ const AdminPanel = () => {
               <UserPlus className="h-4 w-4" />
               Register Wallet
             </TabsTrigger>
-            <TabsTrigger value="delete-main" className="flex items-center gap-1">
-              <Trash2 className="h-4 w-4" />
-              Delete Main
+            <TabsTrigger value="delete-link" asChild>
+              <Link to="/admin/delete" className="flex items-center gap-1">
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Link>
             </TabsTrigger>
           </TabsList>
 
@@ -378,9 +380,6 @@ const AdminPanel = () => {
             <AdminRegisterWallet />
           </TabsContent>
 
-          <TabsContent value="delete-main" className="space-y-4">
-            <AdminDeleteMainWalletTab />
-          </TabsContent>
         </Tabs>
       </div>
     </Layout>
