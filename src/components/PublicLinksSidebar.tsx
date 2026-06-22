@@ -1,10 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Globe, Wallet, Shield, Snowflake, Users, CreditCard, Tag, Database, BarChart3, Activity, Crown, Store, AlertTriangle, Sparkles } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Globe, Wallet, Shield, Snowflake, Users, CreditCard,
+  Tag, Database, BarChart3, Activity, Crown, Store,
+  AlertTriangle, Sparkles, Menu,
+} from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
-const LINKS = [
+export const PUBLIC_LINKS = [
   { path: "/all-wallets", label: "All Wallets", icon: Wallet },
   { path: "/users-aggregated", label: "Users Aggregated", icon: Users },
   { path: "/lanaholders", label: "Lanaholders", icon: Crown },
@@ -23,16 +34,24 @@ const LINKS = [
 const PublicLinksSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="hidden md:block fixed right-4 top-24 z-30 w-52">
-      <Card className="p-3 shadow-lg bg-card/95 backdrop-blur">
-        <div className="flex items-center gap-2 px-2 pb-2 border-b mb-2">
-          <BarChart3 className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">Public Pages</span>
-        </div>
-        <nav className="flex flex-col gap-1">
-          {LINKS.map(({ path, label, icon: Icon }) => {
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Public pages menu">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-64">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            Public Pages
+          </SheetTitle>
+        </SheetHeader>
+        <nav className="mt-6 flex flex-col gap-1">
+          {PUBLIC_LINKS.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
             return (
               <Button
@@ -40,7 +59,7 @@ const PublicLinksSidebar = () => {
                 variant={active ? "secondary" : "ghost"}
                 size="sm"
                 className={cn("justify-start gap-2 h-8 text-xs", active && "font-semibold")}
-                onClick={() => navigate(path)}
+                onClick={() => { navigate(path); setOpen(false); }}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 {label}
@@ -48,8 +67,8 @@ const PublicLinksSidebar = () => {
             );
           })}
         </nav>
-      </Card>
-    </aside>
+      </SheetContent>
+    </Sheet>
   );
 };
 
