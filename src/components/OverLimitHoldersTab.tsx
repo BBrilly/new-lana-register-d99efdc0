@@ -107,9 +107,9 @@ const OverLimitHoldersTab = () => {
 
   const handleFreezeConfirm = async () => {
     if (!selectedHolder) return;
-    const toFreeze = selectedHolder.wallets.filter(w => !w.frozen).map(w => w.id);
+    const toFreeze = selectedHolder.wallets.filter(w => !w.frozen && w.balance > 0).map(w => w.id);
     if (toFreeze.length === 0) {
-      toast.info("All wallets already frozen");
+      toast.info("No wallets with balance to freeze");
       setSelectedHolder(null);
       return;
     }
