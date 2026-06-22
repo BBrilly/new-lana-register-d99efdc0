@@ -222,7 +222,7 @@ const AdminDeleteMainWalletTab = () => {
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="Nostr hex ID (64 hex chars)"
+              placeholder="Nostr hex ID (64 hex) or Wallet ID (L...)"
               value={hexInput}
               onChange={(e) => setHexInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
