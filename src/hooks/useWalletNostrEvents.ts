@@ -85,13 +85,15 @@ const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events
     pool.querySync(relaysToUse, filter87009)
   ]);
 
-  // Client-side safety net in case a relay ignores `authors`.
+  // Strict trusted-signers filter — same behavior as landing page (useAllNostrEvents):
+  // if trusted_signers (KIND 38888) is not loaded, show NOTHING. This prevents
+  // spam pubkeys from appearing in the logged-in wallet view.
   const fetched87003 = trustedSet.size > 0
     ? fetched87003Raw.filter(e => trustedSet.has(e.pubkey.toLowerCase()))
-    : fetched87003Raw;
+    : [];
   const fetched87009 = trustedSet.size > 0
     ? fetched87009Raw.filter(e => trustedSet.has(e.pubkey.toLowerCase()))
-    : fetched87009Raw;
+    : [];
 
   console.log(`📥 Fetched ${fetched87003Raw.length}→${fetched87003.length} Kind 87003 events and ${fetched87009Raw.length}→${fetched87009.length} Kind 87009 events (trusted signers: ${trustedSet.size})`);
 
