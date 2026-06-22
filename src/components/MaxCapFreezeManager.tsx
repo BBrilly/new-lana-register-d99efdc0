@@ -1,176 +1,118 @@
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Search, Snowflake, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  TrendingUp,
+  ChevronDown,
+  ChevronRight,
+  Snowflake,
+  Loader2,
+  AlertTriangle,
+  Copy,
+  Check,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePublicWalletBalances, WalletWithBalance } from "@/hooks/usePublicWalletBalances";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-interface WalletCandidate {
-  id: string;
-  wallet_id: string;
-  wallet_type: string;
-  balance: number;
-  owner_name: string;
-  nostr_hex_id: string;
-  main_wallet_id: string;
+const WALLET_TYPES = ["Wallet", "Main Wallet"];
+
+interface UserGroup {
+  key: string;
+  name: string;
+  nostrHexId: string | null;
+  totalBalance: number;
+  wallets: WalletWithBalance[];
+  frozenCount: number;
+  anyFrozen: boolean;
 }
 
 const MaxCapFreezeManager = () => {
+  const { walletBalances, isLoading, lanaLimits, fxRates } = usePublicWalletBalances(WALLET_TYPES);
   const [threshold, setThreshold] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [candidates, setCandidates] = useState<WalletCandidate[]>([]);
-  const [analyzed, setAnalyzed] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [freezingId, setFreezingId] = useState<string | null>(null);
 
-  const handleAnalyze = async () => {
-    const num = parseFloat(threshold);
-    if (isNaN(num) || num <= 0) {
-      toast.error("Enter a valid positive LANA amount");
-      return;
-    }
+  const thresholdNum = useMemo(() => {
+    const n = parseFloat(threshold);
+    return isNaN(n) || n <= 0 ? null : n;
+  }, [threshold]);
 
-    setIsAnalyzing(true);
-    setCandidates([]);
-    setAnalyzed(false);
-
-    try {
-      // Fetch all unfrozen wallets of type 'Main Wallet' or 'Wallet' with pagination
-      const PAGE_SIZE = 1000;
-      let allWallets: any[] = [];
-      let offset = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data: batch, error } = await supabase
-          .from("wallets")
-          .select("id, wallet_id, wallet_type, main_wallet_id")
-          .in("wallet_type", ["Main Wallet", "Wallet"])
-          .eq("frozen", false)
-          .not("wallet_id", "is", null)
-          .range(offset, offset + PAGE_SIZE - 1);
-
-        if (error) throw error;
-        if (batch && batch.length > 0) {
-          allWallets = [...allWallets, ...batch];
-          offset += PAGE_SIZE;
-          hasMore = batch.length === PAGE_SIZE;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      console.log(`Max Cap: Found ${allWallets.length} unfrozen wallets of type Main Wallet / Wallet`);
-
-      if (allWallets.length === 0) {
-        toast.info("No unfrozen wallets found of type 'Main Wallet' or 'Wallet'");
-        setAnalyzed(true);
-        setIsAnalyzing(false);
-        return;
-      }
-
-      // Fetch main_wallets for owner names
-      const mainWalletIds = [...new Set(allWallets.map(w => w.main_wallet_id))];
-      const mainWalletMap = new Map<string, { name: string; nostr_hex_id: string }>();
-
-      for (let i = 0; i < mainWalletIds.length; i += PAGE_SIZE) {
-        const batch = mainWalletIds.slice(i, i + PAGE_SIZE);
-        const { data: mwBatch, error } = await supabase
-          .from("main_wallets")
-          .select("id, name, display_name, nostr_hex_id")
-          .in("id", batch);
-        if (error) throw error;
-        mwBatch?.forEach((mw: any) => {
-          mainWalletMap.set(mw.id, {
-            name: mw.display_name || mw.name,
-            nostr_hex_id: mw.nostr_hex_id,
-          });
+  const groups = useMemo<UserGroup[]>(() => {
+    const map = new Map<string, UserGroup>();
+    for (const w of walletBalances) {
+      const key = w.main_wallet_id || w.nostr_hex_id || w.name || "unknown";
+      const name = w.display_name || w.name || "(Unknown)";
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name,
+          nostrHexId: w.nostr_hex_id ?? null,
+          totalBalance: 0,
+          wallets: [],
+          frozenCount: 0,
+          anyFrozen: false,
         });
       }
-
-      // Fetch electrum servers
-      const { data: sysParams, error: paramsError } = await supabase
-        .from("system_parameters")
-        .select("electrum")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (paramsError) throw paramsError;
-
-      // Fetch balances in batches of 50
-      const BATCH_SIZE = 50;
-      const balanceMap = new Map<string, number>();
-      const addresses = allWallets.map(w => w.wallet_id as string);
-
-      for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
-        const batch = addresses.slice(i, i + BATCH_SIZE);
-        const { data: balancesData, error: balanceError } = await supabase.functions.invoke(
-          "fetch-wallet-balance",
-          { body: { wallet_addresses: batch, electrum_servers: sysParams.electrum } }
-        );
-        if (balanceError) {
-          console.error("Balance fetch error:", balanceError);
-          continue;
-        }
-        if (balancesData?.wallets) {
-          balancesData.wallets.forEach((wb: any) => balanceMap.set(wb.wallet_id, wb.balance || 0));
-        }
+      const g = map.get(key)!;
+      g.totalBalance += w.balance;
+      g.wallets.push(w);
+      if (w.frozen) {
+        g.frozenCount += 1;
+        g.anyFrozen = true;
       }
-
-      // Filter by threshold and build candidates
-      const results: WalletCandidate[] = allWallets
-        .map(w => {
-          const balance = balanceMap.get(w.wallet_id) || 0;
-          const owner = mainWalletMap.get(w.main_wallet_id);
-          return {
-            id: w.id,
-            wallet_id: w.wallet_id,
-            wallet_type: w.wallet_type,
-            balance,
-            owner_name: owner?.name || "Unknown",
-            nostr_hex_id: owner?.nostr_hex_id || "",
-            main_wallet_id: w.main_wallet_id,
-          };
-        })
-        .filter(w => w.balance > num)
-        .sort((a, b) => b.balance - a.balance);
-
-      setCandidates(results);
-      setAnalyzed(true);
-
-      if (results.length === 0) {
-        toast.info(`No wallets found with balance above ${num} LANA`);
-      } else {
-        toast.success(`Found ${results.length} wallets with balance above ${num} LANA`);
-      }
-    } catch (err: any) {
-      console.error("Analyze error:", err);
-      toast.error(err.message || "Error during analysis");
-    } finally {
-      setIsAnalyzing(false);
     }
+    let arr = Array.from(map.values());
+    if (thresholdNum !== null) {
+      arr = arr.filter((g) => g.totalBalance > thresholdNum);
+    }
+    arr.sort((a, b) =>
+      sortDir === "desc" ? b.totalBalance - a.totalBalance : a.totalBalance - b.totalBalance
+    );
+    return arr;
+  }, [walletBalances, sortDir, thresholdNum]);
+
+  const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.totalBalance, 0), [groups]);
+  const lanaLimit = lanaLimits?.EUR ?? null;
+  const isOverLimit = (balance: number) => lanaLimit !== null && balance > lanaLimit;
+
+  const toggle = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
-  const handleFreeze = async (wallet: WalletCandidate) => {
-    setFreezingId(wallet.id);
+  const copy = (val: string) => {
+    navigator.clipboard.writeText(val);
+    setCopiedId(val);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleFreeze = async (w: WalletWithBalance, nostrHexId: string | null) => {
+    setFreezingId(w.id);
     try {
       const { error } = await supabase.functions.invoke("freeze-wallets", {
         body: {
-          wallet_ids: [wallet.id],
+          wallet_ids: [w.id],
           freeze: true,
           freeze_reason: "frozen_max_cap",
-          nostr_hex_id: wallet.nostr_hex_id,
+          nostr_hex_id: nostrHexId || w.nostr_hex_id || "",
         },
       });
-
       if (error) throw error;
-
-      // Remove from list
-      setCandidates(prev => prev.filter(c => c.id !== wallet.id));
-      toast.success(`Wallet ${wallet.wallet_id.slice(0, 12)}... frozen (frozen_max_cap)`);
+      toast.success(`Wallet ${w.wallet_id?.slice(0, 12)}... frozen (frozen_max_cap)`);
+      // refresh after a brief delay
+      setTimeout(() => window.location.reload(), 800);
     } catch (err: any) {
       console.error("Freeze error:", err);
       toast.error(err.message || "Error freezing wallet");
@@ -180,103 +122,289 @@ const MaxCapFreezeManager = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Max Cap – Freeze by Balance
-          </CardTitle>
-          <CardDescription>
-            Enter a LANA amount. The system will find all unfrozen wallets of type "Main Wallet" and "Wallet" with a balance above that threshold. You can freeze them one by one.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          <CardTitle>Max Cap – Freeze by Balance</CardTitle>
+        </div>
+        <CardDescription>
+          Aggregated balances per user (Wallet + Main Wallet). Expand a row to freeze individual
+          wallets. Optionally enter a LANA threshold to filter users above it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className="flex gap-2 max-w-sm">
             <Input
               type="number"
-              placeholder="LANA amount (e.g. 1000)"
+              placeholder="Filter: total LANA above…"
               value={threshold}
               onChange={(e) => setThreshold(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
             />
-            <Button onClick={handleAnalyze} disabled={isAnalyzing} className="gap-2 shrink-0">
-              {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Analyze
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {isAnalyzing && (
-        <div className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      )}
-
-      {analyzed && !isAnalyzing && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Results ({candidates.length} wallets)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {candidates.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No wallets above the specified amount
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Wallet Address</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Balance (LANA)</TableHead>
-                      <TableHead className="text-center">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {candidates.map((w) => (
-                      <TableRow key={w.id}>
-                        <TableCell className="font-medium">{w.owner_name}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {w.wallet_id}
-                        </TableCell>
-                        <TableCell>{w.wallet_type}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {w.balance.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="gap-1"
-                            disabled={freezingId === w.id}
-                            onClick={() => handleFreeze(w)}
-                          >
-                            {freezingId === w.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Snowflake className="h-3 w-3" />
-                            )}
-                            Freeze
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+            {threshold && (
+              <Button variant="outline" onClick={() => setThreshold("")}>
+                Clear
+              </Button>
             )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+          <div className="text-sm text-right">
+            <span className="text-muted-foreground">
+              {groups.length} users · Total:{" "}
+            </span>
+            <span className="font-bold text-primary">
+              {grandTotal.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{" "}
+              LANA
+            </span>
+          </div>
+        </div>
+
+        {lanaLimits && fxRates && (
+          <div className="mb-4 p-3 rounded-lg border bg-muted/30 flex flex-wrap gap-3 items-center text-xs">
+            <span className="font-medium text-muted-foreground">50 unit limit in LANA:</span>
+            <Badge variant="outline">
+              EUR:{" "}
+              {lanaLimits.EUR.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Badge>
+            <Badge variant="outline">
+              GBP:{" "}
+              {lanaLimits.GBP.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Badge>
+            <Badge variant="outline">
+              USD:{" "}
+              {lanaLimits.USD.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Badge>
+            <span className="ml-auto flex items-center gap-1 text-muted-foreground">
+              <Snowflake className="h-3 w-3 text-sky-500" /> Frozen
+              <span className="mx-1">|</span>
+              <AlertTriangle className="h-3 w-3 text-sky-400" /> Over limit
+            </span>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>#</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-center">Wallets</TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1 -mr-3 font-medium"
+                      onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+                    >
+                      Total Balance {sortDir === "desc" ? "↓" : "↑"}
+                    </Button>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {groups.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      No users found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  groups.map((g, idx) => {
+                    const isOpen = expanded.has(g.key);
+                    const overLimit = isOverLimit(g.totalBalance) && !g.anyFrozen;
+                    return (
+                      <Fragment key={g.key}>
+                        <TableRow
+                          className={cn(
+                            "cursor-pointer",
+                            g.anyFrozen &&
+                              "bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/30 dark:hover:bg-sky-950/50",
+                            overLimit &&
+                              "bg-sky-50/60 hover:bg-sky-100/60 dark:bg-sky-900/20 dark:hover:bg-sky-900/30"
+                          )}
+                          onClick={() => toggle(g.key)}
+                        >
+                          <TableCell>
+                            {isOpen ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium text-muted-foreground">
+                            {idx + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              {g.anyFrozen && (
+                                <Snowflake className="h-3.5 w-3.5 text-sky-500 shrink-0" />
+                              )}
+                              <span
+                                className={cn(
+                                  "font-medium",
+                                  overLimit && "text-sky-600 dark:text-sky-400 font-semibold"
+                                )}
+                              >
+                                {g.name}
+                              </span>
+                              {g.anyFrozen && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] gap-1 border-sky-300 text-sky-700 dark:text-sky-300"
+                                >
+                                  {g.frozenCount}/{g.wallets.length} frozen
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline">{g.wallets.length}</Badge>
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "text-right font-semibold",
+                              overLimit && "text-sky-600 dark:text-sky-400"
+                            )}
+                          >
+                            {overLimit && <AlertTriangle className="h-3 w-3 inline mr-1" />}
+                            {g.totalBalance.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 8,
+                            })}{" "}
+                            LANA
+                          </TableCell>
+                        </TableRow>
+                        {isOpen && (
+                          <TableRow
+                            key={g.key + "-detail"}
+                            className="bg-muted/30 hover:bg-muted/30"
+                          >
+                            <TableCell colSpan={5} className="p-0">
+                              <div className="p-4">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Wallet Type</TableHead>
+                                      <TableHead>Wallet ID</TableHead>
+                                      <TableHead className="text-right">Balance</TableHead>
+                                      <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {g.wallets
+                                      .slice()
+                                      .sort((a, b) => b.balance - a.balance)
+                                      .map((w) => (
+                                        <TableRow
+                                          key={w.id}
+                                          className={cn(
+                                            w.frozen && "bg-sky-50 dark:bg-sky-950/30"
+                                          )}
+                                        >
+                                          <TableCell>
+                                            <div className="flex items-center gap-1.5">
+                                              {w.frozen && (
+                                                <Snowflake className="h-3.5 w-3.5 text-sky-500" />
+                                              )}
+                                              <Badge variant="outline" className="text-xs">
+                                                {w.wallet_type}
+                                              </Badge>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            {w.wallet_id ? (
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-mono text-xs text-muted-foreground break-all">
+                                                  {`${w.wallet_id.substring(0, 8)}...${w.wallet_id.slice(-6)}`}
+                                                </span>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    copy(w.wallet_id!);
+                                                  }}
+                                                >
+                                                  {copiedId === w.wallet_id ? (
+                                                    <Check className="h-3 w-3 text-success" />
+                                                  ) : (
+                                                    <Copy className="h-3 w-3" />
+                                                  )}
+                                                </Button>
+                                              </div>
+                                            ) : (
+                                              <span className="text-muted-foreground">-</span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="text-right font-semibold">
+                                            {w.balance.toLocaleString("en-US", {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 8,
+                                            })}{" "}
+                                            LANA
+                                          </TableCell>
+                                          <TableCell className="text-right">
+                                            {w.frozen ? (
+                                              <Badge variant="secondary" className="text-xs">
+                                                Frozen
+                                              </Badge>
+                                            ) : (
+                                              <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                className="gap-1"
+                                                disabled={freezingId === w.id}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleFreeze(w, g.nostrHexId);
+                                                }}
+                                              >
+                                                {freezingId === w.id ? (
+                                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : (
+                                                  <Snowflake className="h-3 w-3" />
+                                                )}
+                                                Freeze
+                                              </Button>
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
