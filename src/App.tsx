@@ -26,6 +26,7 @@ import RetailWalletsPage from "./pages/RetailWalletsPage";
 import AdminFreezePage from "./pages/AdminFreezePage";
 import UnregisteredOverLimitPage from "./pages/UnregisteredOverLimitPage";
 import UnregisteredDustPage from "./pages/UnregisteredDustPage";
+import AdminDeletePage from "./pages/AdminDeletePage";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/send-to-register" element={<SendToRegister />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/admin/freeze" element={<AdminFreezePage />} />
+          <Route path="/admin/delete" element={<AdminDeletePage />} />
           <Route path="/api-docs" element={<ApiDocs />} />
           <Route path="/all-wallets" element={<AllWalletsPage />} />
           <Route path="/knights" element={<KnightsPage />} />
