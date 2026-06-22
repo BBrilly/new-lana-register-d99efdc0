@@ -1,27 +1,15 @@
-## Težava
+## Dodatek iskanja po Wallet ID na `/admin/delete`
 
-Na sliki je toast: **"User still owns 8 other wallet(s). Delete those first."** — to sporočilo prihaja iz **stare/zastarele deployane različice** edge funkcije `admin-delete-main-wallet`. V trenutni izvorni kodi (`supabase/functions/admin-delete-main-wallet/index.ts`) je blokada **že odstranjena** in funkcija:
+V zavihku **Delete Main** trenutno deluje samo iskanje po Nostr hex ID. Dodali bomo možnost iskanja tudi po **Wallet ID** (L-naslov).
 
-- Naredi log opozorilo namesto 400 napake (vrstica 131–133)
-- Arhivira **vse** povezane denarnice v `deleted_wallets` (vrstica 207–224)
-- Izbriše vse vrstice iz `wallets` preko `eq("main_wallet_id", …)` (vrstica 237–240)
-- Izbriše glavni zapis iz `main_wallets`
+### Spremembe v `src/components/AdminDeleteMainWalletTab.tsx`
 
-Toast, ki ga uporabnik vidi, **ne obstaja v izvorni kodi** — to je dokaz, da na strežniku še teče prejšnja različica funkcije.
+1. Posodobiti placeholder inputa: `"Nostr hex ID (64 hex) or Wallet ID (L...)"`.
+2. V `handleSearch` dodati avtomatsko prepoznavo:
+   - Če je vnos 64-znakovni hex → obstoječa pot (iskanje `main_wallets` po `nostr_hex_id`).
+   - Če se začne z `L` → najprej poiskati v `main_wallets.wallet_id`; če ni zadetka, v `wallets.wallet_id` → vzeti `main_wallet_id` in naložiti pripadajoč main wallet.
+   - Sicer napaka: `"Enter a valid Nostr hex ID or Wallet ID (L...)"`.
+3. Po najdbi main walleta naložiti pripadajoče `wallets` enako kot zdaj. Vse nadaljnje obnašanje (delete flow, KIND 30889/27235 podpis) ostane nespremenjeno — še vedno se uporabi `mainWallet.nostr_hex_id`.
 
-## Plan
-
-### 1. Redeploy `admin-delete-main-wallet`
-Ponovno deployaj edge funkcijo brez sprememb kode, da se na produkciji uporabi trenutna različica iz repozitorija.
-
-### 2. Verifikacija
-Po deployu poženi novo brisanje na isti glavni denarnici. Pričakovan rezultat:
-- Brez toast napake
-- Toast: `Main wallet + 9 related wallet(s) deleted and archived`
-- Execution log prikaže: `⚠ User owns 8 other wallet(s) — they will also be archived and deleted` → `✓ Archived 9 row(s) to deleted_wallets` → `✓ Deleted 9 wallets row(s)` → `✓ Deleted from main_wallets` → `✅ DONE`
-
-### Tehnične opombe
-
-Nobene spremembe sheme ali RLS. Brez sprememb kode v `src/`. Logika brisanja (Nostr KIND 5 + tombstone KIND 30889 + arhiviranje v `deleted_wallets` + brisanje iz `wallets` in `main_wallets`) je že implementirana — potrebujemo le svež deploy.
-
-Če po redeployu napaka ostane, bo naslednji korak preveriti `edge_function_logs` za točen vir 400 odgovora, ker tega sporočila v repo-ju ni.
+### Brez sprememb
+- Zavihek **Delete Frozen**, edge funkcije, RLS, baza.

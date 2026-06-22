@@ -93,9 +93,12 @@ const AdminDeleteMainWalletTab = () => {
   };
 
   const handleSearch = async () => {
-    const hex = hexInput.trim().toLowerCase();
-    if (!/^[0-9a-f]{64}$/.test(hex)) {
-      setSearchError("Enter a valid 64-char hex Nostr ID");
+    const raw = hexInput.trim();
+    const hex = raw.toLowerCase();
+    const isHex = /^[0-9a-f]{64}$/.test(hex);
+    const isWalletId = /^L[a-zA-Z0-9]{25,34}$/.test(raw);
+    if (!isHex && !isWalletId) {
+      setSearchError("Enter a valid Nostr hex ID (64 hex) or Wallet ID (L...)");
       return;
     }
     setSearching(true);
@@ -103,14 +106,52 @@ const AdminDeleteMainWalletTab = () => {
     setMainWallet(null);
     setRelated([]);
     try {
-      const { data: mw, error: mwErr } = await supabase
-        .from("main_wallets")
-        .select("id, name, display_name, nostr_hex_id, wallet_id")
-        .eq("nostr_hex_id", hex)
-        .maybeSingle();
-      if (mwErr) throw mwErr;
+      let mw: MainWalletInfo | null = null;
+
+      if (isHex) {
+        const { data, error } = await supabase
+          .from("main_wallets")
+          .select("id, name, display_name, nostr_hex_id, wallet_id")
+          .eq("nostr_hex_id", hex)
+          .maybeSingle();
+        if (error) throw error;
+        mw = data;
+      } else {
+        // Try main_wallets.wallet_id first
+        const { data: mwDirect, error: mwErr } = await supabase
+          .from("main_wallets")
+          .select("id, name, display_name, nostr_hex_id, wallet_id")
+          .eq("wallet_id", raw)
+          .maybeSingle();
+        if (mwErr) throw mwErr;
+        if (mwDirect) {
+          mw = mwDirect;
+        } else {
+          // Fallback: search in wallets, then resolve main
+          const { data: w, error: wErr } = await supabase
+            .from("wallets")
+            .select("main_wallet_id")
+            .eq("wallet_id", raw)
+            .maybeSingle();
+          if (wErr) throw wErr;
+          if (w?.main_wallet_id) {
+            const { data: mwByRel, error: mwByRelErr } = await supabase
+              .from("main_wallets")
+              .select("id, name, display_name, nostr_hex_id, wallet_id")
+              .eq("id", w.main_wallet_id)
+              .maybeSingle();
+            if (mwByRelErr) throw mwByRelErr;
+            mw = mwByRel;
+          }
+        }
+      }
+
       if (!mw) {
-        setSearchError("No main wallet found for this Nostr hex ID");
+        setSearchError(
+          isHex
+            ? "No main wallet found for this Nostr hex ID"
+            : "No main wallet found for this Wallet ID"
+        );
         return;
       }
       setMainWallet(mw);
@@ -127,6 +168,7 @@ const AdminDeleteMainWalletTab = () => {
       setSearching(false);
     }
   };
+
 
   const performDelete = async () => {
     if (!mainWallet) return;
