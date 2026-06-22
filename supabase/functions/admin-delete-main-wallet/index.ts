@@ -162,6 +162,22 @@ Deno.serve(async (req) => {
     let pubResult: { kind5: any; tomb: any };
     try {
       const aTag = `30889:${registrarPubkey}:${ownerHex}`;
+
+      // STEP 1a: Publish tombstone FIRST so it replaces the existing 30889
+      // (relays keep the newest replaceable event by created_at).
+      // If we published KIND 5 first, NIP-09–strict relays would reject
+      // any future event at the deleted coordinate.
+      const tombstone = createSignedEvent(
+        30889,
+        [["d", ownerHex], ["status", "deleted"]],
+        "",
+        privateKeyHex
+      );
+      log(`▶ Publishing tombstone KIND 30889 (${tombstone.id.substring(0, 12)}…) to ${relays.length} relays`);
+      const r2 = await publishAll(pool, relays, tombstone);
+      log(`  → KIND 30889 tombstone: ok=${r2.ok.length}/${relays.length}${r2.failed.length ? `, failed: ${r2.failed.map(f => f.url).join(", ")}` : ""}`);
+
+      // STEP 1b: Publish KIND 5 deletion AFTER the tombstone is in place.
       const deletion = createSignedEvent(
         5,
         [["a", aTag], ["k", "30889"]],
@@ -172,31 +188,24 @@ Deno.serve(async (req) => {
       const r1 = await publishAll(pool, relays, deletion);
       log(`  → KIND 5: ok=${r1.ok.length}/${relays.length}${r1.failed.length ? `, failed: ${r1.failed.map(f => f.url).join(", ")}` : ""}`);
 
-      const tombstone = createSignedEvent(
-        30889,
-        [["d", ownerHex], ["status", "deleted"]],
-        "",
-        privateKeyHex
-      );
-      log(`▶ Publishing tombstone KIND 30889 (${tombstone.id.substring(0, 12)}…)`);
-      const r2 = await publishAll(pool, relays, tombstone);
-      log(`  → KIND 30889 tombstone: ok=${r2.ok.length}/${relays.length}${r2.failed.length ? `, failed: ${r2.failed.map(f => f.url).join(", ")}` : ""}`);
-
       pubResult = { kind5: r1, tomb: r2 };
 
-      if (r1.ok.length < relays.length || r2.ok.length < relays.length) {
+      // Tombstone must reach every relay (it's the authoritative "deleted" marker).
+      // KIND 5 is best-effort: at least one relay must accept it.
+      if (r2.ok.length < relays.length || r1.ok.length === 0) {
         const failedRelays = Array.from(new Set([
-          ...r1.failed.map((f) => f.url),
           ...r2.failed.map((f) => f.url),
+          ...(r1.ok.length === 0 ? r1.failed.map((f) => f.url) : []),
         ]));
-        log(`✗ Aborting: not all relays accepted. Failed: ${failedRelays.join(", ")}`);
+        log(`✗ Aborting: tombstone not on all relays or KIND 5 on none. Failed: ${failedRelays.join(", ")}`);
         return new Response(JSON.stringify({
           success: false,
-          error: `Deletion aborted — relays did not all confirm. Failed: ${failedRelays.join(", ")}. Local data unchanged.`,
+          error: `Deletion aborted — required relays did not confirm. Failed: ${failedRelays.join(", ")}. Local data unchanged.`,
           steps,
         }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      log(`✓ All ${relays.length} relays acknowledged both events`);
+      log(`✓ Tombstone on all ${relays.length} relays; KIND 5 on ${r1.ok.length}/${relays.length}`);
+
     } finally {
       try { pool.close(relays); } catch { /* ignore */ }
     }
