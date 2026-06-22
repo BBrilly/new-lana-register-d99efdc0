@@ -868,6 +868,7 @@ const LandingPage = () => {
                   <span className="font-medium">{connectedRelays}/{totalRelays} connected</span>
                 </Button>
               )}
+              <PublicLinksSidebar />
               <Button onClick={() => navigate("/login")} size="sm">
                 Login
               </Button>
