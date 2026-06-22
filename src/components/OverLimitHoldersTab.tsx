@@ -280,16 +280,21 @@ const OverLimitHoldersTab = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="gap-1"
-                              disabled={allFrozen || !h.nostrHexId}
-                              onClick={(e) => { e.stopPropagation(); setSelectedHolder(h); setFreezeReason(isOver ? "frozen_max_cap" : "frozen_too_wild"); }}
-                            >
-                              <Snowflake className="h-3.5 w-3.5" />
-                              Freeze all
-                            </Button>
+                            {(() => {
+                              const freezable = h.wallets.filter(w => !w.frozen && w.balance > 0).length;
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="gap-1"
+                                  disabled={allFrozen || !h.nostrHexId || freezable === 0}
+                                  onClick={(e) => { e.stopPropagation(); setSelectedHolder(h); setFreezeReason(isOver ? "frozen_max_cap" : "frozen_too_wild"); }}
+                                >
+                                  <Snowflake className="h-3.5 w-3.5" />
+                                  Freeze all ({freezable})
+                                </Button>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
                         {isOpen && (
