@@ -1,11 +1,11 @@
-import { useMemo, useState, useEffect } from "react";
+import { Fragment, useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Snowflake, AlertTriangle, Loader2, Flame } from "lucide-react";
+import { Snowflake, AlertTriangle, Loader2, Flame, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 import { usePublicWalletBalances, WalletWithBalance } from "@/hooks/usePublicWalletBalances";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -41,6 +41,23 @@ const OverLimitHoldersTab = () => {
   const [freezeReason, setFreezeReason] = useState("frozen_max_cap");
   const [isFreezing, setIsFreezing] = useState(false);
   const [frozenKeys, setFrozenKeys] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const toggleExpand = (key: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const copy = (val: string) => {
+    navigator.clipboard.writeText(val);
+    setCopiedId(val);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   useEffect(() => {
     supabase
@@ -178,6 +195,7 @@ const OverLimitHoldersTab = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10"></TableHead>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="text-center">Wallets</TableHead>
@@ -191,7 +209,7 @@ const OverLimitHoldersTab = () => {
                 <TableBody>
                   {displayed.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                           No holders found
                       </TableCell>
                     </TableRow>
@@ -200,13 +218,19 @@ const OverLimitHoldersTab = () => {
                       const isOver = limit != null && h.totalBalance > limit;
                       const allFrozen = h.frozenCount === h.walletCount && h.walletCount > 0;
                       const justFrozen = frozenKeys.has(h.key);
+                      const isOpen = expanded.has(h.key);
                       return (
+                        <Fragment key={h.key}>
                         <TableRow
-                          key={h.key}
                           className={cn(
+                            "cursor-pointer",
                             isOver && !allFrozen && "bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/30 dark:hover:bg-sky-950/50",
                           )}
+                          onClick={() => toggleExpand(h.key)}
                         >
+                          <TableCell>
+                            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </TableCell>
                           <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1.5">
@@ -261,13 +285,72 @@ const OverLimitHoldersTab = () => {
                               variant="destructive"
                               className="gap-1"
                               disabled={allFrozen || !h.nostrHexId}
-                              onClick={() => { setSelectedHolder(h); setFreezeReason(isOver ? "frozen_max_cap" : "frozen_too_wild"); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedHolder(h); setFreezeReason(isOver ? "frozen_max_cap" : "frozen_too_wild"); }}
                             >
                               <Snowflake className="h-3.5 w-3.5" />
                               Freeze all
                             </Button>
                           </TableCell>
                         </TableRow>
+                        {isOpen && (
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={9} className="p-0">
+                              <div className="p-4">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Wallet Type</TableHead>
+                                      <TableHead>Wallet ID</TableHead>
+                                      <TableHead className="text-center">Split</TableHead>
+                                      <TableHead className="text-right">Balance</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {h.wallets
+                                      .slice()
+                                      .sort((a, b) => b.balance - a.balance)
+                                      .map((w) => (
+                                        <TableRow key={w.id} className={cn(w.frozen && "bg-sky-50 dark:bg-sky-950/30")}>
+                                          <TableCell>
+                                            <div className="flex items-center gap-1.5">
+                                              {w.frozen && <Snowflake className="h-3.5 w-3.5 text-sky-500" />}
+                                              <Badge variant="outline" className="text-xs">{w.wallet_type}</Badge>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            {w.wallet_id ? (
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-mono text-xs text-muted-foreground break-all">
+                                                  {`${w.wallet_id.substring(0, 8)}...${w.wallet_id.slice(-6)}`}
+                                                </span>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6"
+                                                  onClick={(e) => { e.stopPropagation(); copy(w.wallet_id!); }}
+                                                >
+                                                  {copiedId === w.wallet_id ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                                                </Button>
+                                              </div>
+                                            ) : <span className="text-muted-foreground">-</span>}
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            {w.split_created != null ? (
+                                              <Badge variant="outline" className="text-xs font-mono">#{w.split_created}</Badge>
+                                            ) : <span className="text-muted-foreground">-</span>}
+                                          </TableCell>
+                                          <TableCell className="text-right font-semibold">
+                                            {fmtLana(w.balance)} LANA
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </Fragment>
                       );
                     })
                   )}
