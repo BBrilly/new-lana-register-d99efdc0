@@ -838,7 +838,6 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <PublicLinksSidebar />
       {/* Header */}
       <nav className="border-b border-border bg-card">
         <div className="container mx-auto px-4">
