@@ -107,9 +107,9 @@ const OverLimitHoldersTab = () => {
 
   const handleFreezeConfirm = async () => {
     if (!selectedHolder) return;
-    const toFreeze = selectedHolder.wallets.filter(w => !w.frozen).map(w => w.id);
+    const toFreeze = selectedHolder.wallets.filter(w => !w.frozen && w.balance > 0).map(w => w.id);
     if (toFreeze.length === 0) {
-      toast.info("All wallets already frozen");
+      toast.info("No wallets with balance to freeze");
       setSelectedHolder(null);
       return;
     }
@@ -280,16 +280,21 @@ const OverLimitHoldersTab = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="gap-1"
-                              disabled={allFrozen || !h.nostrHexId}
-                              onClick={(e) => { e.stopPropagation(); setSelectedHolder(h); setFreezeReason(isOver ? "frozen_max_cap" : "frozen_too_wild"); }}
-                            >
-                              <Snowflake className="h-3.5 w-3.5" />
-                              Freeze all
-                            </Button>
+                            {(() => {
+                              const freezable = h.wallets.filter(w => !w.frozen && w.balance > 0).length;
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="gap-1"
+                                  disabled={allFrozen || !h.nostrHexId || freezable === 0}
+                                  onClick={(e) => { e.stopPropagation(); setSelectedHolder(h); setFreezeReason(isOver ? "frozen_max_cap" : "frozen_too_wild"); }}
+                                >
+                                  <Snowflake className="h-3.5 w-3.5" />
+                                  Freeze all ({freezable})
+                                </Button>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
                         {isOpen && (
@@ -369,7 +374,7 @@ const OverLimitHoldersTab = () => {
               Freeze all wallets for {selectedHolder?.name}
             </DialogTitle>
             <DialogDescription>
-              This will freeze {selectedHolder?.wallets.filter(w => !w.frozen).length ?? 0} wallet(s)
+              This will freeze {selectedHolder?.wallets.filter(w => !w.frozen && w.balance > 0).length ?? 0} wallet(s) with balance
               ({WALLET_TYPES.join(" + ")}) totalling {selectedHolder ? fmtLana(selectedHolder.totalBalance) : 0} LANA.
               Action is broadcast via KIND 30889 to all relays.
             </DialogDescription>
