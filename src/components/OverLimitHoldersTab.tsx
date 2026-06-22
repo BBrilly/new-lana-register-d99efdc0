@@ -374,7 +374,7 @@ const OverLimitHoldersTab = () => {
               Freeze all wallets for {selectedHolder?.name}
             </DialogTitle>
             <DialogDescription>
-              This will freeze {selectedHolder?.wallets.filter(w => !w.frozen).length ?? 0} wallet(s)
+              This will freeze {selectedHolder?.wallets.filter(w => !w.frozen && w.balance > 0).length ?? 0} wallet(s) with balance
               ({WALLET_TYPES.join(" + ")}) totalling {selectedHolder ? fmtLana(selectedHolder.totalBalance) : 0} LANA.
               Action is broadcast via KIND 30889 to all relays.
             </DialogDescription>
