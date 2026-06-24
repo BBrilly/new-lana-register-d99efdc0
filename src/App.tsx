@@ -28,6 +28,7 @@ import UnregisteredOverLimitPage from "./pages/UnregisteredOverLimitPage";
 import UnregisteredDustPage from "./pages/UnregisteredDustPage";
 import AdminDeletePage from "./pages/AdminDeletePage";
 import NewRegistrationsPage from "./pages/NewRegistrationsPage";
+import NewUsersPage from "./pages/NewUsersPage";
 
 const queryClient = new QueryClient();
 
