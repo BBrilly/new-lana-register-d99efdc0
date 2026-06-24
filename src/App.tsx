@@ -63,6 +63,7 @@ const App = () => (
           <Route path="/unregistered-over-limit" element={<UnregisteredOverLimitPage />} />
           <Route path="/unregistered-dust" element={<UnregisteredDustPage />} />
           <Route path="/new-registrations" element={<NewRegistrationsPage />} />
+          <Route path="/new-users" element={<NewUsersPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
