@@ -9,7 +9,7 @@ import {
 import {
   Globe, Wallet, Shield, Snowflake, Users, CreditCard,
   Tag, Database, BarChart3, Activity, Crown, Store,
-  AlertTriangle, Sparkles, Menu, BadgePlus,
+  AlertTriangle, Sparkles, Menu, BadgePlus, UserPlus,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
