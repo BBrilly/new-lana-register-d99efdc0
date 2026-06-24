@@ -27,6 +27,7 @@ import AdminFreezePage from "./pages/AdminFreezePage";
 import UnregisteredOverLimitPage from "./pages/UnregisteredOverLimitPage";
 import UnregisteredDustPage from "./pages/UnregisteredDustPage";
 import AdminDeletePage from "./pages/AdminDeletePage";
+import NewRegistrationsPage from "./pages/NewRegistrationsPage";
 
 const queryClient = new QueryClient();
 
