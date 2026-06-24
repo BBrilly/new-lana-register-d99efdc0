@@ -61,6 +61,7 @@ const App = () => (
           <Route path="/retail-wallets" element={<RetailWalletsPage />} />
           <Route path="/unregistered-over-limit" element={<UnregisteredOverLimitPage />} />
           <Route path="/unregistered-dust" element={<UnregisteredDustPage />} />
+          <Route path="/new-registrations" element={<NewRegistrationsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
