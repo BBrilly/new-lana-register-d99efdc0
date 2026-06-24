@@ -9,7 +9,7 @@ import {
 import {
   Globe, Wallet, Shield, Snowflake, Users, CreditCard,
   Tag, Database, BarChart3, Activity, Crown, Store,
-  AlertTriangle, Sparkles, Menu,
+  AlertTriangle, Sparkles, Menu, BadgePlus,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ import { useState } from "react";
 
 export const PUBLIC_LINKS = [
   { path: "/all-wallets", label: "All Wallets", icon: Wallet },
+  { path: "/new-registrations", label: "New Registrations", icon: BadgePlus },
   { path: "/users-aggregated", label: "Users Aggregated", icon: Users },
   { path: "/lanaholders", label: "Lanaholders", icon: Crown },
   { path: "/knights", label: "Knights", icon: Shield },
