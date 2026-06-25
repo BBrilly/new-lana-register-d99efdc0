@@ -263,6 +263,42 @@ export type Database = {
         }
         Relationships: []
       }
+      own_exit_events: {
+        Row: {
+          action: string
+          applied: boolean
+          content: string | null
+          event_created_at: string
+          event_id: string
+          id: string
+          process_event_id: string
+          processed_at: string
+          pubkey: string
+        }
+        Insert: {
+          action: string
+          applied?: boolean
+          content?: string | null
+          event_created_at: string
+          event_id: string
+          id?: string
+          process_event_id: string
+          processed_at?: string
+          pubkey: string
+        }
+        Update: {
+          action?: string
+          applied?: boolean
+          content?: string | null
+          event_created_at?: string
+          event_id?: string
+          id?: string
+          process_event_id?: string
+          processed_at?: string
+          pubkey?: string
+        }
+        Relationships: []
+      }
       registered_lana_events: {
         Row: {
           amount: number
