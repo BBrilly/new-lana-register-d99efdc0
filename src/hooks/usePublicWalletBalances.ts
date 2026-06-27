@@ -92,16 +92,37 @@ export const usePublicWalletBalances = (walletTypes: string[]) => {
           host: s.host, port: parseInt(s.port, 10)
         }));
 
-        const { data: balanceData, error: balanceError } = await supabase.functions.invoke(
-          'fetch-wallet-balance',
-          { body: { wallet_addresses: walletAddresses, electrum_servers: electrumServers } }
-        );
-
-        if (balanceError) console.error('Balance error:', balanceError);
+        // Split into smaller chunks to avoid long-running edge function calls
+        // (single 3000+ addr call can exceed timeouts when an Electrum server is slow).
+        const CHUNK = 400;
+        const chunks: string[][] = [];
+        for (let i = 0; i < walletAddresses.length; i += CHUNK) {
+          chunks.push(walletAddresses.slice(i, i + CHUNK));
+        }
+        console.log(`Fetching balances in ${chunks.length} chunks of up to ${CHUNK}`);
 
         const balanceMap = new Map<string, number>();
-        if (balanceData?.wallets) {
-          balanceData.wallets.forEach((w: any) => balanceMap.set(w.wallet_id, w.balance || 0));
+        const results = await Promise.all(
+          chunks.map(async (chunk, idx) => {
+            try {
+              const { data, error } = await supabase.functions.invoke('fetch-wallet-balance', {
+                body: { wallet_addresses: chunk, electrum_servers: electrumServers },
+              });
+              if (error) {
+                console.error(`Chunk ${idx + 1}/${chunks.length} error:`, error);
+                return null;
+              }
+              return data;
+            } catch (e) {
+              console.error(`Chunk ${idx + 1}/${chunks.length} threw:`, e);
+              return null;
+            }
+          })
+        );
+        for (const data of results) {
+          if (data?.wallets) {
+            data.wallets.forEach((w: any) => balanceMap.set(w.wallet_id, w.balance || 0));
+          }
         }
 
         setWalletBalances(allWallets.map(wallet => ({
