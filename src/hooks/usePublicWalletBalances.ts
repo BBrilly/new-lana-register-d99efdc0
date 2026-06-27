@@ -92,9 +92,10 @@ export const usePublicWalletBalances = (walletTypes: string[]) => {
           host: s.host, port: parseInt(s.port, 10)
         }));
 
-        // Split into smaller chunks to avoid long-running edge function calls
-        // (single 3000+ addr call can exceed timeouts when an Electrum server is slow).
-        const CHUNK = 400;
+        // Split into smaller chunks + retry, so a single slow Electrum server
+        // doesn't cause silent 0-balances for thousands of wallets.
+        const CHUNK = 200;
+        const MAX_ATTEMPTS = 3;
         const chunks: string[][] = [];
         for (let i = 0; i < walletAddresses.length; i += CHUNK) {
           chunks.push(walletAddresses.slice(i, i + CHUNK));
@@ -102,28 +103,42 @@ export const usePublicWalletBalances = (walletTypes: string[]) => {
         console.log(`Fetching balances in ${chunks.length} chunks of up to ${CHUNK}`);
 
         const balanceMap = new Map<string, number>();
-        const results = await Promise.all(
-          chunks.map(async (chunk, idx) => {
+        let failedAddresses = 0;
+
+        const fetchChunk = async (chunk: string[], idx: number): Promise<any | null> => {
+          for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
               const { data, error } = await supabase.functions.invoke('fetch-wallet-balance', {
                 body: { wallet_addresses: chunk, electrum_servers: electrumServers },
               });
-              if (error) {
-                console.error(`Chunk ${idx + 1}/${chunks.length} error:`, error);
-                return null;
-              }
-              return data;
+              if (error) throw error;
+              if (data?.wallets) return data;
+              throw new Error('empty response');
             } catch (e) {
-              console.error(`Chunk ${idx + 1}/${chunks.length} threw:`, e);
-              return null;
+              console.warn(`Chunk ${idx + 1}/${chunks.length} attempt ${attempt} failed:`, e);
+              if (attempt < MAX_ATTEMPTS) {
+                await new Promise(r => setTimeout(r, 800 * attempt));
+              }
             }
-          })
-        );
-        for (const data of results) {
+          }
+          return null;
+        };
+
+        const results = await Promise.all(chunks.map((c, i) => fetchChunk(c, i)));
+        results.forEach((data, i) => {
           if (data?.wallets) {
             data.wallets.forEach((w: any) => balanceMap.set(w.wallet_id, w.balance || 0));
+          } else {
+            failedAddresses += chunks[i].length;
           }
+        });
+
+        if (failedAddresses > 0) {
+          toast.warning(
+            `Balances for ${failedAddresses} wallets could not be loaded (Electrum timeout). Please refresh.`
+          );
         }
+
 
         setWalletBalances(allWallets.map(wallet => ({
           id: wallet.id,
