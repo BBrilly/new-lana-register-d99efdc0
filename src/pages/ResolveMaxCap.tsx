@@ -371,6 +371,7 @@ const ResolveMaxCap = () => {
                             <th className="text-left px-2 py-1">Lvl</th>
                             <th className="text-right px-2 py-1">Trigger</th>
                             <th className="text-right px-2 py-1">Coins</th>
+                            <th className="text-right px-2 py-1">Remaining</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -380,6 +381,7 @@ const ResolveMaxCap = () => {
                               <td className="px-2 py-1">{l.level_no}</td>
                               <td className="px-2 py-1 text-right">{l.trigger_price}</td>
                               <td className="px-2 py-1 text-right">{l.coins_to_give.toLocaleString('en-US', { maximumFractionDigits: 8 })}</td>
+                              <td className="px-2 py-1 text-right">{l.remaining_lanas != null ? l.remaining_lanas.toLocaleString('en-US', { maximumFractionDigits: 8 }) : '—'}</td>
                             </tr>
                           ))}
                         </tbody>
