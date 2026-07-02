@@ -1,52 +1,45 @@
-# Avtomatski freeze/unfreeze ob KIND 87055 (OWN Exit / Re-enter)
+## Cilj
+Na `/wallets/resolve-max-cap` za denarnice tipa **Lana8Wonder** ne zahtevamo doniranja celotnega stanja, ampak samo **zapadli znesek v LANA**, izračunan iz KIND 88888 plana in trenutne SPLIT cene. Za ostale tipe ostane obnašanje enako (celotno stanje).
 
-Cron na vsakih 5 minut bere relayje, lovi nove KIND 87055 dogodke, in glede na zadnji `action` (`exit`/`enter`) avtomatsko zamrzne ali odmrzne vse denarnice avtorja ter propagira spremembo prek KIND 30889.
+## Vhodni podatki
+- **subject_hex**: `nostr_hex_id` lastnika iz `main_wallets` (poiskan preko `wallets.main_wallet_id` za trenutno denarnico).
+- **Trenutna cena EUR/LANA**: `system_parameters.split` (parseFloat).
+- **Plan**: zadnji KIND 88888 event z relayjev, filter `{ kinds:[88888], "#d":["plan:"+subject_hex], "#p":[subject_hex] }`, veljaven le če `event.pubkey === "a56253e6232b2ab5a96b60d233434d4f759ba4c858a3cc0f4ec51906dce73ae6"`.
 
-## 1. Nova tabela `own_exit_events`
-Migration — sledi vsem prejetim 87055 dogodkom (za audit + dedup + "latest-wins"):
+## Izračun zapadlega zneska
+1. V `content.accounts` poišči account, kjer se `wallet` (ali `acct` tag `["acct", N, WALLET]`) ujema z `fromWallet` (L-address te denarnice).
+2. Za vsak `level` tega accounta, kjer `trigger_price <= currentSplitPrice`, seštej `coins_to_give`.
+3. `dueLana = round8(sum(coins_to_give))`.
+4. Če accounta ne najdemo ali plana ni → prikaži napako in ne dovoli po\u0161iljanja (fallback ne sme biti "celotno stanje" — za Lana8Wonder gre vedno preko plana).
+5. `sendAmount = min(dueLana, balanceLana - fee)`. Če `balanceLana <= dueLana + fee`, opozori uporabnika (ne blokiraj, po\u0161lje kar zmore, minus fee).
 
-- `id uuid PK`
-- `event_id text UNIQUE NOT NULL` — Nostr event id
-- `pubkey text NOT NULL` — avtor (= main_wallet.nostr_hex_id)
-- `process_event_id text NOT NULL` — iz `e` taga
-- `action text NOT NULL CHECK (action IN ('exit','enter'))`
-- `content text`
-- `event_created_at timestamptz NOT NULL`
-- `processed_at timestamptz DEFAULT now()`
-- `applied boolean DEFAULT false` — ali smo na podlagi tega že spremenili stanje
-- Indeksi: `(pubkey, process_event_id, event_created_at DESC)`
-- RLS: enable; `GRANT SELECT` za `anon` + `authenticated` (public audit), `GRANT ALL` za `service_role`. Policy: javno branje.
+## UI spremembe (`src/pages/ResolveMaxCap.tsx`)
+- Preberi tip denarnice iz `wallets` (dodaj query za `wallet_type` in `main_wallet_id`/`main_wallets.nostr_hex_id`).
+- Novo stanje: `isLana8Wonder`, `planLoading`, `planError`, `dueLana`, `triggeredLevels[]` (za pregleden prikaz).
+- Če `isLana8Wonder`:
+  - Naslov kartice: "Resolve Lana8Wonder Freeze — Pay Due Amount".
+  - Panel z detajli: trenutna cena (EUR/LANA), account #, seznam spro\u017eenih levelov (level_no, trigger_price, coins_to_give), skupaj `dueLana` v LANA + EUR ekvivalent.
+  - "Amount to Send" prikazuje `dueLana` (ne celotno stanje). Če stanje < due, prika\u017ei opozorilo "Insufficient balance for full due amount".
+  - Gumb: "Pay Due & Unfreeze Wallet".
+- Sicer (drugi tipi): obstoje\u010de obna\u0161anje (donate all) ostane nespremenjeno.
 
-## 2. Nova edge funkcija `kind-cron-87055-own-exit-monitor`
-`verify_jwt = false`. Naloge:
+## Nostr fetch helper
+Dodaj v `src/utils/nostrClient.ts` novo funkcijo `fetchLana8WonderPlan(subjectHex)` — odpre WS na trenutno povezanih relayjih, po\u0161lje REQ, po\u010daka do 5s, izbere event z najve\u010djim `created_at`, preveri pubkey, parsira `content` kot JSON in vrne `{ accounts, event }`. Timeout in cleanup.
 
-1. Naloži relaye iz `system_parameters` (najnovejši vnos).
-2. Določi `since` = `max(event_created_at)` iz `own_exit_events` minus 10 min varnostni rob (ali zadnjih 24 h ob prvem zagonu).
-3. Z `SimplePool.querySync(relays, { kinds: [87055], since })` poberi dogodke.
-4. Za vsak dogodek:
-   - Preskoči, če `event_id` že obstaja v `own_exit_events`.
-   - Preveri obliko: `action` ∈ {exit, enter}, `e` tag s `process` markerjem prisoten, `pubkey` je 64-hex.
-   - **Avtoriziraj**: avtor mora obstajati v `main_wallets.nostr_hex_id`. Sicer zavrži.
-   - `INSERT` v `own_exit_events`.
-5. Grupiraj po `(pubkey, process_event_id)`, izberi event z največjim `event_created_at` (latest-wins).
-6. Za vsak (pubkey, proces) izračunaj **želeno stanje uporabnika za ta proces**: `exit` ⇒ zamrznjen, `enter` ⇒ aktiven.
-7. **Trenutno stanje uporabnika**: če KATERIKOLI odprt proces zahteva `exit` ⇒ uporabnik mora biti frozen; sicer unfrozen (za naš trigger).
-8. **Apply** spremembo samo, če se trenutno DB stanje razlikuje:
-   - `exit` → vse denarnice tega `main_wallet_id` (ki niso že frozen z drugim razlogom): `UPDATE wallets SET frozen = true, freeze_reason = 'frozen_own'`.
-   - `enter` → odmrzni samo tiste z `freeze_reason = 'frozen_own'` (nikoli ne odmrzni `frozen_l8w`, `frozen_over_limit` itd.).
-9. Po DB spremembi: zgradi in objavi posodobljen **KIND 30889** (po istem vzorcu kot `supabase/functions/freeze-wallets/index.ts` — vključno z vsemi `w` tagi, `status="active"` na profilu, podpis z `nostr_registrar_nsec`, broadcast z `Promise.race` timeouti).
-10. Označi obdelane dogodke `applied = true` in vrni povzetek.
+## Send flow
+Uporabi obstoje\u010di `return-lanas-and-send-KIND-87009`, samo z drugim `amount`:
+- `recipients: [{ address: donationWallet, amount: sendAmount }]` kjer je `sendAmount = min(dueLana, balance - fee)`.
+- `memo: "Lana8Wonder due payment — level(s) X,Y triggered at price P."`
+- Po uspehu enako klic `freeze-wallets` z `freeze:false`.
 
-Logiranje vsakega koraka z `correlationId`, da je razvidno v edge function logih.
+## Edge cases
+- Plan nima nobenega spro\u017eenega levela pri trenutni ceni → `dueLana = 0` → onemogo\u010di gumb z besedilom "No levels triggered yet — nothing due."
+- Ve\u010d accountov mapira na isto denarnico → se\u0161tej vse.
+- Publisher pubkey ne ujema → napaka "Invalid plan signer".
 
-## 3. Cron job (vsakih 5 minut)
-Z `supabase--insert` ustvariti `cron.schedule` zapis, ki kliče edge funkcijo preko `net.http_post` (po vzorcu obstoječih cronov v `.lovable/CRON_SETUP.md`). Naslov: `kind-cron-87055-own-exit-monitor`, urnik `*/5 * * * *`.
+## Datoteke
+- `src/pages/ResolveMaxCap.tsx` — glavne spremembe UI + logika.
+- `src/utils/nostrClient.ts` — `fetchLana8WonderPlan()`.
 
-## 4. Brez sprememb v UI
-Proces je v celoti server-side. Obstoječ admin Freeze UI ostane nedotaknjen — `frozen_own` se bo pojavil v seznamih zamrznjenih denarnic, ker uporablja `wallets.frozen` + `freeze_reason`.
-
-## Tehnične opombe
-- `freeze_reason = 'frozen_own'` — uporablja se izključno za ta avtomatski tok; ročno odmrzovanje takih denarnic naj ostane mogoče prek obstoječega admin UI-ja, a se bo ob naslednjem heartbeatu vrnilo, dokler je zadnji 87055 še `exit` (kar je željeno vedenje "propagacije").
-- Latest-wins se preverja PO INSERTU vseh novih dogodkov, ne zaporedno — tako se prepreči nepotreben "flap" znotraj enega cikla.
-- KIND 30889 broadcast se izvede ENKRAT na uporabnika na cikel (po vseh spremembah), ne na vsak event.
-- Verify_jwt = false (cron klic brez auth).
+## Brez sprememb
+- Edge funkcije, DB shema, ostali tipi denarnic in tokovi.

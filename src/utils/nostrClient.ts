@@ -246,3 +246,118 @@ export const getStoredRelayStatuses = (): RelayStatus[] => {
   const stored = sessionStorage.getItem('lana_relay_statuses');
   return stored ? JSON.parse(stored) : [];
 };
+
+// ============= KIND 88888 — Lana8Wonder Annuity Plan =============
+
+const LANA8WONDER_PUBLISHER_PUBKEY = 'a56253e6232b2ab5a96b60d233434d4f759ba4c858a3cc0f4ec51906dce73ae6';
+
+export interface Lana8WonderLevel {
+  row_id?: string;
+  level_no: number;
+  trigger_price: number;
+  coins_to_give: number;
+  cash_out?: number;
+  remaining_lanas?: number;
+}
+
+export interface Lana8WonderAccount {
+  account_id: number;
+  wallet: string;
+  levels: Lana8WonderLevel[];
+}
+
+export interface Lana8WonderPlan {
+  subject_hex: string;
+  plan_id: string;
+  coin: string;
+  currency: string;
+  policy: string;
+  accounts: Lana8WonderAccount[];
+  event: Event;
+}
+
+export const fetchLana8WonderPlan = async (
+  subjectHex: string
+): Promise<Lana8WonderPlan | null> => {
+  const relayStatuses = getStoredRelayStatuses();
+  let relays = relayStatuses.filter(r => r.connected).map(r => r.url);
+  const params = getStoredParameters();
+  if (relays.length === 0 && params?.relays) relays = params.relays;
+  if (relays.length === 0) relays = RELAYS;
+
+  const pool = new SimplePool();
+  try {
+    const filter: Filter = {
+      kinds: [88888],
+      '#d': [`plan:${subjectHex}`],
+      '#p': [subjectHex],
+      limit: 5,
+    };
+
+    const events: Event[] = await Promise.race([
+      pool.querySync(relays, filter),
+      new Promise<Event[]>((resolve) => setTimeout(() => resolve([]), 6000)),
+    ]);
+
+    if (!events || events.length === 0) return null;
+
+    const valid = events
+      .filter((e) => e.pubkey === LANA8WONDER_PUBLISHER_PUBKEY)
+      .sort((a, b) => b.created_at - a.created_at);
+    if (valid.length === 0) return null;
+
+    const latest = valid[0];
+    const content = JSON.parse(latest.content);
+    return {
+      subject_hex: content.subject_hex,
+      plan_id: content.plan_id,
+      coin: content.coin,
+      currency: content.currency,
+      policy: content.policy,
+      accounts: content.accounts || [],
+      event: latest,
+    };
+  } catch (err) {
+    console.error('Error fetching KIND 88888 plan:', err);
+    return null;
+  } finally {
+    try { pool.close(relays); } catch {}
+  }
+};
+
+export interface Lana8WonderDueResult {
+  dueLana: number;
+  triggeredLevels: Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number }>;
+  matchedAccountIds: number[];
+}
+
+export const calculateLana8WonderDue = (
+  plan: Lana8WonderPlan,
+  walletAddress: string,
+  currentPrice: number
+): Lana8WonderDueResult => {
+  const triggered: Lana8WonderDueResult['triggeredLevels'] = [];
+  const matched: number[] = [];
+  let sum = 0;
+  for (const acc of plan.accounts) {
+    if (acc.wallet !== walletAddress) continue;
+    matched.push(acc.account_id);
+    for (const lvl of acc.levels || []) {
+      if (Number(lvl.trigger_price) <= currentPrice) {
+        sum += Number(lvl.coins_to_give) || 0;
+        triggered.push({
+          account_id: acc.account_id,
+          level_no: lvl.level_no,
+          trigger_price: Number(lvl.trigger_price),
+          coins_to_give: Number(lvl.coins_to_give) || 0,
+        });
+      }
+    }
+  }
+  return {
+    dueLana: Math.round(sum * 1e8) / 1e8,
+    triggeredLevels: triggered,
+    matchedAccountIds: matched,
+  };
+};
+

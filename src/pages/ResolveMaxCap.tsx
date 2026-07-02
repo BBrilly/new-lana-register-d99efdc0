@@ -13,7 +13,7 @@ import { useWalletBalances } from '@/hooks/useWalletBalances';
 import { toast } from 'sonner';
 import { Html5Qrcode } from 'html5-qrcode';
 import { getAuthSession, convertWifToIds } from '@/utils/wifAuth';
-import { getStoredParameters, getStoredRelayStatuses } from '@/utils/nostrClient';
+import { getStoredParameters, getStoredRelayStatuses, fetchLana8WonderPlan, calculateLana8WonderDue, Lana8WonderPlan } from '@/utils/nostrClient';
 
 const ResolveMaxCap = () => {
   const [searchParams] = useSearchParams();
@@ -34,8 +34,28 @@ const ResolveMaxCap = () => {
   const balanceLana = fromWallet ? (balances.get(fromWallet) ?? 0) : 0;
 
   const fee = 0.001;
-  const sendAmount = Math.max(0, +(balanceLana - fee).toFixed(8));
-  const hasSufficientBalance = balanceLana > fee;
+
+  // Lana8Wonder specific state
+  const [walletType, setWalletType] = useState<string | null>(null);
+  const [ownerHex, setOwnerHex] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Lana8WonderPlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [dueLana, setDueLana] = useState<number>(0);
+  const [triggeredLevels, setTriggeredLevels] = useState<Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number }>>([]);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+
+  const isLana8Wonder = walletType === 'Lana8Wonder';
+
+  // Compute send amount depending on wallet type
+  const sendAmount = isLana8Wonder
+    ? Math.max(0, +Math.min(dueLana, Math.max(0, balanceLana - fee)).toFixed(8))
+    : Math.max(0, +(balanceLana - fee).toFixed(8));
+
+  const hasSufficientBalance = isLana8Wonder
+    ? balanceLana > fee && dueLana > 0
+    : balanceLana > fee;
+
 
   useEffect(() => {
     return () => {
@@ -70,6 +90,66 @@ const ResolveMaxCap = () => {
     };
     fetchDonationWallet();
   }, []);
+
+  // Load wallet type + owner hex + Lana8Wonder plan
+  useEffect(() => {
+    const loadWalletAndPlan = async () => {
+      if (!walletUuid) return;
+      try {
+        const { data: w, error } = await supabase
+          .from('wallets')
+          .select('wallet_type, main_wallet_id, main_wallet:main_wallets(nostr_hex_id)')
+          .eq('id', walletUuid)
+          .single();
+        if (error) throw error;
+        const type = (w as any).wallet_type as string;
+        const hex = ((w as any).main_wallet?.nostr_hex_id) as string | undefined;
+        setWalletType(type);
+        setOwnerHex(hex || null);
+
+        if (type !== 'Lana8Wonder') return;
+
+        // Read current price from system_parameters (KIND 38888)
+        const sysParams = getStoredParameters();
+        const price = parseFloat(sysParams?.split || '0');
+        setCurrentPrice(price);
+
+        if (!hex) {
+          setPlanError('Owner Nostr HEX ID not found for this wallet.');
+          return;
+        }
+        if (!price || price <= 0) {
+          setPlanError('Current SPLIT price not available.');
+          return;
+        }
+
+        setPlanLoading(true);
+        setPlanError(null);
+        const p = await fetchLana8WonderPlan(hex);
+        if (!p) {
+          setPlanError('Lana8Wonder plan (KIND 88888) not found on relays.');
+          setPlanLoading(false);
+          return;
+        }
+        setPlan(p);
+        const due = calculateLana8WonderDue(p, fromWallet, price);
+        setDueLana(due.dueLana);
+        setTriggeredLevels(due.triggeredLevels);
+        if (due.matchedAccountIds.length === 0) {
+          setPlanError(`Wallet ${fromWallet} is not mapped to any account in the plan.`);
+        } else if (due.triggeredLevels.length === 0) {
+          setPlanError('No levels triggered yet at current price — nothing due.');
+        }
+        setPlanLoading(false);
+      } catch (err) {
+        console.error('Error loading wallet/plan:', err);
+        setPlanError(err instanceof Error ? err.message : 'Failed to load plan');
+        setPlanLoading(false);
+      }
+    };
+    loadWalletAndPlan();
+  }, [walletUuid, fromWallet]);
+
 
   const startScanning = async () => {
     setIsScanning(true);
@@ -185,7 +265,10 @@ const ResolveMaxCap = () => {
           from_wallet: fromWallet,
           to_wallet: donationWallet,
           amount_lanoshis: String(Math.round(sendAmount * 100000000)),
-          memo: 'Max cap exceeded — balance donated to resolve freeze.'
+          memo: isLana8Wonder
+            ? `Lana8Wonder due payment — ${triggeredLevels.length} level(s) triggered at price ${currentPrice} EUR/LANA.`
+            : 'Max cap exceeded — balance donated to resolve freeze.'
+
         }
       });
 
@@ -239,32 +322,96 @@ const ResolveMaxCap = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Snowflake className="h-5 w-5 text-blue-500" />
-              Resolve Max Cap Freeze
+              {isLana8Wonder ? 'Resolve Lana8Wonder Freeze — Pay Due Amount' : 'Resolve Max Cap Freeze'}
             </CardTitle>
             <CardDescription>
-              Your wallet exceeded the maximum LANA cap and was frozen. To unfreeze it, donate your entire balance to the system wallet.
+              {isLana8Wonder
+                ? 'Your Lana8Wonder wallet is frozen. Pay only the due amount (sum of LANA from all triggered plan levels at current SPLIT price) to unfreeze it.'
+                : 'Your wallet exceeded the maximum LANA cap and was frozen. To unfreeze it, donate your entire balance to the system wallet.'}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Balance to donate */}
+            {/* Lana8Wonder plan panel */}
+            {isLana8Wonder && (
+              <div className="rounded-lg border border-amber-400/40 bg-amber-50/40 dark:bg-amber-950/20 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Current SPLIT price</Label>
+                  <span className="font-semibold">{currentPrice > 0 ? `${currentPrice} EUR/LANA` : '—'}</span>
+                </div>
+                {planLoading && <p className="text-sm text-muted-foreground">Loading KIND 88888 plan…</p>}
+                {planError && (
+                  <div className="flex items-start gap-2 text-destructive text-sm">
+                    <AlertTriangle className="h-4 w-4 mt-0.5" />
+                    <span>{planError}</span>
+                  </div>
+                )}
+                {plan && triggeredLevels.length > 0 && (
+                  <>
+                    <div className="text-xs text-muted-foreground">Triggered levels ({triggeredLevels.length}):</div>
+                    <div className="max-h-40 overflow-auto border rounded bg-background/50">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-2 py-1">Acc</th>
+                            <th className="text-left px-2 py-1">Lvl</th>
+                            <th className="text-right px-2 py-1">Trigger</th>
+                            <th className="text-right px-2 py-1">Coins</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {triggeredLevels.map((l, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="px-2 py-1">{l.account_id}</td>
+                              <td className="px-2 py-1">{l.level_no}</td>
+                              <td className="px-2 py-1 text-right">{l.trigger_price}</td>
+                              <td className="px-2 py-1 text-right">{l.coins_to_give.toLocaleString('en-US', { maximumFractionDigits: 8 })}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Amount to send */}
             <div className="rounded-lg border border-blue-400/30 bg-blue-50/50 dark:bg-blue-950/20 p-4">
-              <Label className="text-sm text-muted-foreground">Amount to Donate (entire balance)</Label>
+              <Label className="text-sm text-muted-foreground">
+                {isLana8Wonder ? 'Due Amount to Pay' : 'Amount to Donate (entire balance)'}
+              </Label>
               <div className="mt-1">
-                {isLoadingBalance ? (
+                {isLoadingBalance || (isLana8Wonder && planLoading) ? (
                   <Skeleton className="h-8 w-32" />
                 ) : (
                   <>
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                       {sendAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} LAN
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Full balance: {balanceLana.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} LAN (fee: {fee} LAN)
-                    </p>
+                    {isLana8Wonder ? (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          Total due: {dueLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN
+                          {currentPrice > 0 && ` (~${(dueLana * currentPrice).toFixed(2)} EUR)`} · fee: {fee} LAN
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Wallet balance: {balanceLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN
+                        </p>
+                        {dueLana > 0 && balanceLana < dueLana + fee && (
+                          <p className="text-sm text-amber-600 mt-1">Insufficient balance for full due amount — sending what's available.</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Full balance: {balanceLana.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} LAN (fee: {fee} LAN)
+                      </p>
+                    )}
                   </>
                 )}
               </div>
             </div>
+
 
             {/* From/To */}
             <div className="space-y-4">
@@ -315,9 +462,10 @@ const ResolveMaxCap = () => {
                 <span>{fee} LAN</span>
               </div>
               <div className="flex justify-between font-medium mt-1">
-                <span>Amount Donated:</span>
+                <span>{isLana8Wonder ? 'Amount to Pay:' : 'Amount Donated:'}</span>
                 <span>{sendAmount.toLocaleString('en-US', { minimumFractionDigits: 4 })} LAN</span>
               </div>
+
             </div>
 
             {/* Balance warning */}
@@ -363,7 +511,15 @@ const ResolveMaxCap = () => {
             {/* Send Button */}
             <Button
               onClick={handleSend}
-              disabled={isSending || isLoadingSettings || !hasSufficientBalance || !privateKey.trim() || !!settingsError || isScanning}
+              disabled={
+                isSending ||
+                isLoadingSettings ||
+                !hasSufficientBalance ||
+                !privateKey.trim() ||
+                !!settingsError ||
+                isScanning ||
+                (isLana8Wonder && (planLoading || !!planError || dueLana <= 0 || sendAmount <= 0))
+              }
               className="w-full"
               size="lg"
             >
@@ -375,10 +531,11 @@ const ResolveMaxCap = () => {
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Donate All & Unfreeze Wallet
+                  {isLana8Wonder ? 'Pay Due & Unfreeze Wallet' : 'Donate All & Unfreeze Wallet'}
                 </>
               )}
             </Button>
+
           </CardContent>
         </Card>
       </div>
