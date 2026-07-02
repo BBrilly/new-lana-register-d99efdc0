@@ -328,7 +328,7 @@ const ResolveMaxCap = () => {
             </CardTitle>
             <CardDescription>
               {isLana8Wonder
-                ? 'Your Lana8Wonder wallet is frozen. Pay only the due amount (sum of LANA from all triggered plan levels at current SPLIT price) to unfreeze it.'
+                ? 'Your Lana8Wonder wallet is frozen. Pay only the excess above the expected remaining balance defined by triggered plan levels (accounts for prior payouts).'
                 : 'Your wallet exceeded the maximum LANA cap and was frozen. To unfreeze it, donate your entire balance to the system wallet.'}
             </CardDescription>
           </CardHeader>
