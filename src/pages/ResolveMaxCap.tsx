@@ -109,9 +109,9 @@ const ResolveMaxCap = () => {
 
         if (type !== 'Lana8Wonder') return;
 
-        // Read current price from system_parameters (KIND 38888)
+        // Read current price from system_parameters (KIND 38888) — fx.EUR is EUR/LANA price
         const sysParams = getStoredParameters();
-        const price = parseFloat(sysParams?.split || '0');
+        const price = Number(sysParams?.fx?.EUR || 0);
         setCurrentPrice(price);
 
         if (!hex) {
