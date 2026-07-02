@@ -150,7 +150,7 @@ const ResolveMaxCap = () => {
       }
     };
     loadWalletAndPlan();
-  }, [walletUuid, fromWallet]);
+  }, [walletUuid, fromWallet, balanceLana]);
 
 
   const startScanning = async () => {
