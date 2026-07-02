@@ -265,7 +265,10 @@ const ResolveMaxCap = () => {
           from_wallet: fromWallet,
           to_wallet: donationWallet,
           amount_lanoshis: String(Math.round(sendAmount * 100000000)),
-          memo: 'Max cap exceeded — balance donated to resolve freeze.'
+          memo: isLana8Wonder
+            ? `Lana8Wonder due payment — ${triggeredLevels.length} level(s) triggered at price ${currentPrice} EUR/LANA.`
+            : 'Max cap exceeded — balance donated to resolve freeze.'
+
         }
       });
 
