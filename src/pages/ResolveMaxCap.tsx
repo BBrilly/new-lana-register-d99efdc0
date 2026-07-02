@@ -462,9 +462,10 @@ const ResolveMaxCap = () => {
                 <span>{fee} LAN</span>
               </div>
               <div className="flex justify-between font-medium mt-1">
-                <span>Amount Donated:</span>
+                <span>{isLana8Wonder ? 'Amount to Pay:' : 'Amount Donated:'}</span>
                 <span>{sendAmount.toLocaleString('en-US', { minimumFractionDigits: 4 })} LAN</span>
               </div>
+
             </div>
 
             {/* Balance warning */}
