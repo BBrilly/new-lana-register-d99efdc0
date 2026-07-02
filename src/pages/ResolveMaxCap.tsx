@@ -133,8 +133,9 @@ const ResolveMaxCap = () => {
           return;
         }
         setPlan(p);
-        const due = calculateLana8WonderDue(p, fromWallet, price);
+        const due = calculateLana8WonderDue(p, fromWallet, price, balanceLana);
         setDueLana(due.dueLana);
+        setExpectedRemaining(due.expectedRemaining);
         setTriggeredLevels(due.triggeredLevels);
         if (due.matchedAccountIds.length === 0) {
           setPlanError(`Wallet ${fromWallet} is not mapped to any account in the plan.`);
