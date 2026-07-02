@@ -34,8 +34,28 @@ const ResolveMaxCap = () => {
   const balanceLana = fromWallet ? (balances.get(fromWallet) ?? 0) : 0;
 
   const fee = 0.001;
-  const sendAmount = Math.max(0, +(balanceLana - fee).toFixed(8));
-  const hasSufficientBalance = balanceLana > fee;
+
+  // Lana8Wonder specific state
+  const [walletType, setWalletType] = useState<string | null>(null);
+  const [ownerHex, setOwnerHex] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Lana8WonderPlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [dueLana, setDueLana] = useState<number>(0);
+  const [triggeredLevels, setTriggeredLevels] = useState<Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number }>>([]);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+
+  const isLana8Wonder = walletType === 'Lana8Wonder';
+
+  // Compute send amount depending on wallet type
+  const sendAmount = isLana8Wonder
+    ? Math.max(0, +Math.min(dueLana, Math.max(0, balanceLana - fee)).toFixed(8))
+    : Math.max(0, +(balanceLana - fee).toFixed(8));
+
+  const hasSufficientBalance = isLana8Wonder
+    ? balanceLana > fee && dueLana > 0
+    : balanceLana > fee;
+
 
   useEffect(() => {
     return () => {
