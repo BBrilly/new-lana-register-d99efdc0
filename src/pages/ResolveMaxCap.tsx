@@ -511,7 +511,15 @@ const ResolveMaxCap = () => {
             {/* Send Button */}
             <Button
               onClick={handleSend}
-              disabled={isSending || isLoadingSettings || !hasSufficientBalance || !privateKey.trim() || !!settingsError || isScanning}
+              disabled={
+                isSending ||
+                isLoadingSettings ||
+                !hasSufficientBalance ||
+                !privateKey.trim() ||
+                !!settingsError ||
+                isScanning ||
+                (isLana8Wonder && (planLoading || !!planError || dueLana <= 0 || sendAmount <= 0))
+              }
               className="w-full"
               size="lg"
             >
@@ -523,10 +531,11 @@ const ResolveMaxCap = () => {
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Donate All & Unfreeze Wallet
+                  {isLana8Wonder ? 'Pay Due & Unfreeze Wallet' : 'Donate All & Unfreeze Wallet'}
                 </>
               )}
             </Button>
+
           </CardContent>
         </Card>
       </div>
