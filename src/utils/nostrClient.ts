@@ -327,37 +327,59 @@ export const fetchLana8WonderPlan = async (
 
 export interface Lana8WonderDueResult {
   dueLana: number;
-  triggeredLevels: Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number }>;
+  triggeredLevels: Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number; remaining_lanas?: number }>;
   matchedAccountIds: number[];
+  expectedRemaining: number; // sum across matched accounts of remaining_lanas at the highest triggered level
+  totalTriggeredCoins: number; // gross sum of coins_to_give across all triggered levels (informational)
 }
 
 export const calculateLana8WonderDue = (
   plan: Lana8WonderPlan,
   walletAddress: string,
-  currentPrice: number
+  currentPrice: number,
+  currentBalance: number = 0,
 ): Lana8WonderDueResult => {
   const triggered: Lana8WonderDueResult['triggeredLevels'] = [];
   const matched: number[] = [];
-  let sum = 0;
+  let totalCoins = 0;
+  let expectedRemaining = 0;
+
   for (const acc of plan.accounts) {
     if (acc.wallet !== walletAddress) continue;
     matched.push(acc.account_id);
-    for (const lvl of acc.levels || []) {
+
+    const levels = (acc.levels || []).slice().sort((a, b) => Number(a.level_no) - Number(b.level_no));
+    let highestTriggered: Lana8WonderLevel | null = null;
+
+    for (const lvl of levels) {
       if (Number(lvl.trigger_price) <= currentPrice) {
-        sum += Number(lvl.coins_to_give) || 0;
+        totalCoins += Number(lvl.coins_to_give) || 0;
         triggered.push({
           account_id: acc.account_id,
-          level_no: lvl.level_no,
+          level_no: Number(lvl.level_no),
           trigger_price: Number(lvl.trigger_price),
           coins_to_give: Number(lvl.coins_to_give) || 0,
+          remaining_lanas: lvl.remaining_lanas != null ? Number(lvl.remaining_lanas) : undefined,
         });
+        highestTriggered = lvl;
       }
     }
+
+    if (highestTriggered && highestTriggered.remaining_lanas != null) {
+      expectedRemaining += Number(highestTriggered.remaining_lanas) || 0;
+    }
   }
+
+  // Actual due = current balance minus what should still remain in the wallet
+  // (accounts for previously paid-out amounts). Never negative.
+  const delta = Math.max(0, currentBalance - expectedRemaining);
+
   return {
-    dueLana: Math.round(sum * 1e8) / 1e8,
+    dueLana: Math.round(delta * 1e8) / 1e8,
     triggeredLevels: triggered,
     matchedAccountIds: matched,
+    expectedRemaining: Math.round(expectedRemaining * 1e8) / 1e8,
+    totalTriggeredCoins: Math.round(totalCoins * 1e8) / 1e8,
   };
 };
 
