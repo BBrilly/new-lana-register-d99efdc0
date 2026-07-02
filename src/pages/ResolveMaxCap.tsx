@@ -341,6 +341,18 @@ const ResolveMaxCap = () => {
                   <Label className="text-sm text-muted-foreground">Current SPLIT price</Label>
                   <span className="font-semibold">{currentPrice > 0 ? `${currentPrice} EUR/LANA` : '—'}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Wallet balance</Label>
+                  <span className="font-semibold">{balanceLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Expected remaining (per plan)</Label>
+                  <span className="font-semibold">{expectedRemaining.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN</span>
+                </div>
+                <div className="flex items-center justify-between border-t pt-2">
+                  <Label className="text-sm text-muted-foreground">Delta (due to pay)</Label>
+                  <span className="font-semibold text-amber-700 dark:text-amber-300">{dueLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN</span>
+                </div>
                 {planLoading && <p className="text-sm text-muted-foreground">Loading KIND 88888 plan…</p>}
                 {planError && (
                   <div className="flex items-start gap-2 text-destructive text-sm">
