@@ -1,23 +1,13 @@
 import { SimplePool } from 'nostr-tools';
 const pool = new SimplePool();
 const relays = ['wss://relay.lanavault.space','wss://relay.lanacoin-eternity.com','wss://relay.lanaheartvoice.com','wss://relay.lovelana.org'];
-const since = Math.floor(Date.now()/1000) - 5*86400;
-const events = await pool.querySync(relays, { kinds:[87003], since, limit: 500 });
-console.log('total:', events.length);
-const zeros = events.filter(e => {
-  const a = e.tags.find(t=>t[0]==='UnregistratedAmountLatoshis');
-  return !a || a[1]==='0' || a[1]==='';
-});
-console.log('zero amount:', zeros.length);
-const byCreator = {};
-for (const e of zeros) byCreator[e.pubkey]=(byCreator[e.pubkey]||0)+1;
-console.log('zeros by pubkey:', byCreator);
-console.log('sample zero events (3):');
-for (const e of zeros.slice(0,5)) {
-  console.log(JSON.stringify({id:e.id,pubkey:e.pubkey,created_at:new Date(e.created_at*1000).toISOString(),tags:e.tags,content:e.content}, null, 2));
+const evs = await pool.querySync(relays, { kinds:[38888], authors:['9eb71bf1e9c3189c78800e4c3831c1c1a93ab43b61118818c32e4490891a35b3'], '#d':['main'], limit: 10});
+console.log('count', evs.length);
+for (const e of evs.sort((a,b)=>b.created_at-a.created_at)) {
+  const split = e.tags.find(t=>t[0]==='split')?.[1];
+  const ver = e.tags.find(t=>t[0]==='version')?.[1];
+  const fx = e.tags.filter(t=>t[0]==='fx');
+  console.log(new Date(e.created_at*1000).toISOString(), 'split=', split, 'version=', ver, 'fx=', JSON.stringify(fx), 'id=', e.id.slice(0,12));
 }
-console.log('all kinds 87003 by pubkey count:');
-const byCreator2 = {};
-for (const e of events) byCreator2[e.pubkey]=(byCreator2[e.pubkey]||0)+1;
-console.log(byCreator2);
+pool.close(relays);
 process.exit(0);
