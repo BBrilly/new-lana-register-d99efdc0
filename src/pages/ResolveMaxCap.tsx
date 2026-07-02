@@ -91,6 +91,66 @@ const ResolveMaxCap = () => {
     fetchDonationWallet();
   }, []);
 
+  // Load wallet type + owner hex + Lana8Wonder plan
+  useEffect(() => {
+    const loadWalletAndPlan = async () => {
+      if (!walletUuid) return;
+      try {
+        const { data: w, error } = await supabase
+          .from('wallets')
+          .select('wallet_type, main_wallet_id, main_wallet:main_wallets(nostr_hex_id)')
+          .eq('id', walletUuid)
+          .single();
+        if (error) throw error;
+        const type = (w as any).wallet_type as string;
+        const hex = ((w as any).main_wallet?.nostr_hex_id) as string | undefined;
+        setWalletType(type);
+        setOwnerHex(hex || null);
+
+        if (type !== 'Lana8Wonder') return;
+
+        // Read current price from system_parameters (KIND 38888)
+        const sysParams = getStoredParameters();
+        const price = parseFloat(sysParams?.split || '0');
+        setCurrentPrice(price);
+
+        if (!hex) {
+          setPlanError('Owner Nostr HEX ID not found for this wallet.');
+          return;
+        }
+        if (!price || price <= 0) {
+          setPlanError('Current SPLIT price not available.');
+          return;
+        }
+
+        setPlanLoading(true);
+        setPlanError(null);
+        const p = await fetchLana8WonderPlan(hex);
+        if (!p) {
+          setPlanError('Lana8Wonder plan (KIND 88888) not found on relays.');
+          setPlanLoading(false);
+          return;
+        }
+        setPlan(p);
+        const due = calculateLana8WonderDue(p, fromWallet, price);
+        setDueLana(due.dueLana);
+        setTriggeredLevels(due.triggeredLevels);
+        if (due.matchedAccountIds.length === 0) {
+          setPlanError(`Wallet ${fromWallet} is not mapped to any account in the plan.`);
+        } else if (due.triggeredLevels.length === 0) {
+          setPlanError('No levels triggered yet at current price — nothing due.');
+        }
+        setPlanLoading(false);
+      } catch (err) {
+        console.error('Error loading wallet/plan:', err);
+        setPlanError(err instanceof Error ? err.message : 'Failed to load plan');
+        setPlanLoading(false);
+      }
+    };
+    loadWalletAndPlan();
+  }, [walletUuid, fromWallet]);
+
+
   const startScanning = async () => {
     setIsScanning(true);
     setTimeout(async () => {
