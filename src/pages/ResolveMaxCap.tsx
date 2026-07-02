@@ -322,32 +322,96 @@ const ResolveMaxCap = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Snowflake className="h-5 w-5 text-blue-500" />
-              Resolve Max Cap Freeze
+              {isLana8Wonder ? 'Resolve Lana8Wonder Freeze — Pay Due Amount' : 'Resolve Max Cap Freeze'}
             </CardTitle>
             <CardDescription>
-              Your wallet exceeded the maximum LANA cap and was frozen. To unfreeze it, donate your entire balance to the system wallet.
+              {isLana8Wonder
+                ? 'Your Lana8Wonder wallet is frozen. Pay only the due amount (sum of LANA from all triggered plan levels at current SPLIT price) to unfreeze it.'
+                : 'Your wallet exceeded the maximum LANA cap and was frozen. To unfreeze it, donate your entire balance to the system wallet.'}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Balance to donate */}
+            {/* Lana8Wonder plan panel */}
+            {isLana8Wonder && (
+              <div className="rounded-lg border border-amber-400/40 bg-amber-50/40 dark:bg-amber-950/20 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Current SPLIT price</Label>
+                  <span className="font-semibold">{currentPrice > 0 ? `${currentPrice} EUR/LANA` : '—'}</span>
+                </div>
+                {planLoading && <p className="text-sm text-muted-foreground">Loading KIND 88888 plan…</p>}
+                {planError && (
+                  <div className="flex items-start gap-2 text-destructive text-sm">
+                    <AlertTriangle className="h-4 w-4 mt-0.5" />
+                    <span>{planError}</span>
+                  </div>
+                )}
+                {plan && triggeredLevels.length > 0 && (
+                  <>
+                    <div className="text-xs text-muted-foreground">Triggered levels ({triggeredLevels.length}):</div>
+                    <div className="max-h-40 overflow-auto border rounded bg-background/50">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-2 py-1">Acc</th>
+                            <th className="text-left px-2 py-1">Lvl</th>
+                            <th className="text-right px-2 py-1">Trigger</th>
+                            <th className="text-right px-2 py-1">Coins</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {triggeredLevels.map((l, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="px-2 py-1">{l.account_id}</td>
+                              <td className="px-2 py-1">{l.level_no}</td>
+                              <td className="px-2 py-1 text-right">{l.trigger_price}</td>
+                              <td className="px-2 py-1 text-right">{l.coins_to_give.toLocaleString('en-US', { maximumFractionDigits: 8 })}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Amount to send */}
             <div className="rounded-lg border border-blue-400/30 bg-blue-50/50 dark:bg-blue-950/20 p-4">
-              <Label className="text-sm text-muted-foreground">Amount to Donate (entire balance)</Label>
+              <Label className="text-sm text-muted-foreground">
+                {isLana8Wonder ? 'Due Amount to Pay' : 'Amount to Donate (entire balance)'}
+              </Label>
               <div className="mt-1">
-                {isLoadingBalance ? (
+                {isLoadingBalance || (isLana8Wonder && planLoading) ? (
                   <Skeleton className="h-8 w-32" />
                 ) : (
                   <>
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                       {sendAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} LAN
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Full balance: {balanceLana.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} LAN (fee: {fee} LAN)
-                    </p>
+                    {isLana8Wonder ? (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          Total due: {dueLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN
+                          {currentPrice > 0 && ` (~${(dueLana * currentPrice).toFixed(2)} EUR)`} · fee: {fee} LAN
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Wallet balance: {balanceLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN
+                        </p>
+                        {dueLana > 0 && balanceLana < dueLana + fee && (
+                          <p className="text-sm text-amber-600 mt-1">Insufficient balance for full due amount — sending what's available.</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Full balance: {balanceLana.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} LAN (fee: {fee} LAN)
+                      </p>
+                    )}
                   </>
                 )}
               </div>
             </div>
+
 
             {/* From/To */}
             <div className="space-y-4">
