@@ -13,7 +13,7 @@ import { useWalletBalances } from '@/hooks/useWalletBalances';
 import { toast } from 'sonner';
 import { Html5Qrcode } from 'html5-qrcode';
 import { getAuthSession, convertWifToIds } from '@/utils/wifAuth';
-import { getStoredParameters, getStoredRelayStatuses } from '@/utils/nostrClient';
+import { getStoredParameters, getStoredRelayStatuses, fetchLana8WonderPlan, calculateLana8WonderDue, Lana8WonderPlan } from '@/utils/nostrClient';
 
 const ResolveMaxCap = () => {
   const [searchParams] = useSearchParams();
