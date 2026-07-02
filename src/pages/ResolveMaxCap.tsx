@@ -42,7 +42,8 @@ const ResolveMaxCap = () => {
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [dueLana, setDueLana] = useState<number>(0);
-  const [triggeredLevels, setTriggeredLevels] = useState<Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number }>>([]);
+  const [triggeredLevels, setTriggeredLevels] = useState<Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number; remaining_lanas?: number }>>([]);
+  const [expectedRemaining, setExpectedRemaining] = useState<number>(0);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
 
   const isLana8Wonder = walletType === 'Lana8Wonder';
@@ -132,8 +133,9 @@ const ResolveMaxCap = () => {
           return;
         }
         setPlan(p);
-        const due = calculateLana8WonderDue(p, fromWallet, price);
+        const due = calculateLana8WonderDue(p, fromWallet, price, balanceLana);
         setDueLana(due.dueLana);
+        setExpectedRemaining(due.expectedRemaining);
         setTriggeredLevels(due.triggeredLevels);
         if (due.matchedAccountIds.length === 0) {
           setPlanError(`Wallet ${fromWallet} is not mapped to any account in the plan.`);
@@ -148,7 +150,7 @@ const ResolveMaxCap = () => {
       }
     };
     loadWalletAndPlan();
-  }, [walletUuid, fromWallet]);
+  }, [walletUuid, fromWallet, balanceLana]);
 
 
   const startScanning = async () => {
@@ -326,7 +328,7 @@ const ResolveMaxCap = () => {
             </CardTitle>
             <CardDescription>
               {isLana8Wonder
-                ? 'Your Lana8Wonder wallet is frozen. Pay only the due amount (sum of LANA from all triggered plan levels at current SPLIT price) to unfreeze it.'
+                ? 'Your Lana8Wonder wallet is frozen. Pay only the excess above the expected remaining balance defined by triggered plan levels (accounts for prior payouts).'
                 : 'Your wallet exceeded the maximum LANA cap and was frozen. To unfreeze it, donate your entire balance to the system wallet.'}
             </CardDescription>
           </CardHeader>
@@ -338,6 +340,18 @@ const ResolveMaxCap = () => {
                 <div className="flex items-center justify-between">
                   <Label className="text-sm text-muted-foreground">Current SPLIT price</Label>
                   <span className="font-semibold">{currentPrice > 0 ? `${currentPrice} EUR/LANA` : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Wallet balance</Label>
+                  <span className="font-semibold">{balanceLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Expected remaining (per plan)</Label>
+                  <span className="font-semibold">{expectedRemaining.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN</span>
+                </div>
+                <div className="flex items-center justify-between border-t pt-2">
+                  <Label className="text-sm text-muted-foreground">Delta (due to pay)</Label>
+                  <span className="font-semibold text-amber-700 dark:text-amber-300">{dueLana.toLocaleString('en-US', { maximumFractionDigits: 8 })} LAN</span>
                 </div>
                 {planLoading && <p className="text-sm text-muted-foreground">Loading KIND 88888 plan…</p>}
                 {planError && (
@@ -357,6 +371,7 @@ const ResolveMaxCap = () => {
                             <th className="text-left px-2 py-1">Lvl</th>
                             <th className="text-right px-2 py-1">Trigger</th>
                             <th className="text-right px-2 py-1">Coins</th>
+                            <th className="text-right px-2 py-1">Remaining</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -366,6 +381,7 @@ const ResolveMaxCap = () => {
                               <td className="px-2 py-1">{l.level_no}</td>
                               <td className="px-2 py-1 text-right">{l.trigger_price}</td>
                               <td className="px-2 py-1 text-right">{l.coins_to_give.toLocaleString('en-US', { maximumFractionDigits: 8 })}</td>
+                              <td className="px-2 py-1 text-right">{l.remaining_lanas != null ? l.remaining_lanas.toLocaleString('en-US', { maximumFractionDigits: 8 }) : '—'}</td>
                             </tr>
                           ))}
                         </tbody>
