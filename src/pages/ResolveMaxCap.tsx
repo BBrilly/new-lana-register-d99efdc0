@@ -42,7 +42,7 @@ const ResolveMaxCap = () => {
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [dueLana, setDueLana] = useState<number>(0);
-  const [triggeredLevels, setTriggeredLevels] = useState<Array<{ account_id: number; level_no: number; trigger_price: number; coins_to_give: number }>>([]);
+  const [expectedRemaining, setExpectedRemaining] = useState<number>(0);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
 
   const isLana8Wonder = walletType === 'Lana8Wonder';
