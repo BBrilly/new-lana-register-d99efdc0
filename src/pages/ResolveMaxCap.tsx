@@ -33,7 +33,10 @@ const ResolveMaxCap = () => {
   const { balances, isLoading: isLoadingBalance } = useWalletBalances(fromWallet ? [fromWallet] : []);
   const balanceLana = fromWallet ? (balances.get(fromWallet) ?? 0) : 0;
 
-  const fee = 0.001;
+  // Safety reserve for network fee. Real fee depends on UTXO count; a generous
+  // reserve prevents "Insufficient funds" when many UTXOs push the actual fee
+  // above the minimum. Any unused portion stays in the wallet as change.
+  const fee = 0.01;
 
   // Lana8Wonder specific state
   const [walletType, setWalletType] = useState<string | null>(null);
