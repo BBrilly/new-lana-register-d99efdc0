@@ -813,6 +813,14 @@ serve(async (req) => {
     if (!utxos || utxos.length === 0) throw new Error('No UTXOs available');
     console.log(`📦 Found ${utxos.length} UTXOs`);
     const totalAvailableSatoshis = utxos.reduce((sum: number, utxo: any) => sum + utxo.value, 0);
+
+    if (shouldDeductFeeFromAmount && totalAmountSatoshis > totalAvailableSatoshis) {
+      recipientsInSatoshis = [{
+        ...recipientsInSatoshis[0],
+        amount: totalAvailableSatoshis
+      }];
+      totalAmountSatoshis = totalAvailableSatoshis;
+    }
     
     // Select UTXOs
     let initialSelection = UTXOSelector.selectUTXOs(utxos, totalAmountSatoshis);
