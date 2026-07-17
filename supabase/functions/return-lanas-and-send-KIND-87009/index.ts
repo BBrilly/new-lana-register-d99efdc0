@@ -752,8 +752,10 @@ serve(async (req) => {
       from_wallet,
       to_wallet,
       amount_lanoshis,
-      memo
+      memo,
+      deduct_fee_from_amount
     } = await req.json();
+    const shouldDeductFeeFromAmount = deduct_fee_from_amount === true;
     
     console.log('📋 Transaction parameters:', {
       sender_address,
@@ -796,19 +798,21 @@ serve(async (req) => {
         ];
     
     // Convert recipients to satoshis
-    const recipientsInSatoshis = recipients.map((recipient: any) => ({
+    let recipientsInSatoshis = recipients.map((recipient: any) => ({
       address: recipient.address,
       amount: typeof recipient.amount === 'number' && recipient.amount > 1000000
         ? Math.round(recipient.amount)
         : Math.round(recipient.amount * 100000000)
     }));
     
-    const totalAmountSatoshis = recipientsInSatoshis.reduce((sum: number, r: any) => sum + r.amount, 0);
+    let totalAmountSatoshis = recipientsInSatoshis.reduce((sum: number, r: any) => sum + r.amount, 0);
+    const requestedAmountSatoshis = totalAmountSatoshis;
     
     // Get UTXOs
     const utxos = await electrumCall('blockchain.address.listunspent', [sender_address], servers);
     if (!utxos || utxos.length === 0) throw new Error('No UTXOs available');
     console.log(`📦 Found ${utxos.length} UTXOs`);
+    const totalAvailableSatoshis = utxos.reduce((sum: number, utxo: any) => sum + utxo.value, 0);
     
     // Select UTXOs
     let initialSelection = UTXOSelector.selectUTXOs(utxos, totalAmountSatoshis);
@@ -825,6 +829,7 @@ serve(async (req) => {
     while (totalSelected < totalAmountSatoshis + fee && selectedUTXOs.length < utxos.length && iterations < 10) {
       iterations++;
       const needed = totalAmountSatoshis + fee;
+      if (shouldDeductFeeFromAmount && needed > totalAvailableSatoshis) break;
       const reSelection = UTXOSelector.selectUTXOs(utxos, needed);
       selectedUTXOs = reSelection.selected;
       totalSelected = reSelection.totalValue;
@@ -833,7 +838,36 @@ serve(async (req) => {
     }
     
     if (totalSelected < totalAmountSatoshis + fee) {
+      if (shouldDeductFeeFromAmount) {
+        if (recipientsInSatoshis.length !== 1) {
+          throw new Error('Fee deduction mode supports exactly one recipient');
+        }
+
+        // Spend the available selected UTXOs and subtract the real estimated fee
+        // from the outgoing amount. This prevents frozen Lana8Wonder wallets from
+        // failing when the client-side reserve is smaller than the UTXO-based fee.
+        const spendableUTXOs = [...utxos]
+          .sort((a: any, b: any) => b.value - a.value)
+          .slice(0, UTXOSelector.MAX_INPUTS);
+        selectedUTXOs = spendableUTXOs;
+        totalSelected = selectedUTXOs.reduce((sum: number, utxo: any) => sum + utxo.value, 0);
+        baseFee = (selectedUTXOs.length * 180 + recipientsInSatoshis.length * 34 + 10) * 100;
+        fee = Math.floor(baseFee * 1.5);
+
+        const adjustedAmount = totalSelected - fee;
+        if (adjustedAmount <= UTXOSelector.DUST_THRESHOLD) {
+          throw new Error(`Insufficient funds after fee: available ${(totalSelected / 100000000).toFixed(8)} LANA, fee ${(fee / 100000000).toFixed(8)} LANA`);
+        }
+
+        recipientsInSatoshis = [{
+          ...recipientsInSatoshis[0],
+          amount: adjustedAmount
+        }];
+        totalAmountSatoshis = adjustedAmount;
+        console.log(`💸 Deducted fee from outgoing amount. Requested ${(requestedAmountSatoshis / 100000000).toFixed(8)} LANA, sending ${(totalAmountSatoshis / 100000000).toFixed(8)} LANA, fee ${(fee / 100000000).toFixed(8)} LANA`);
+      } else {
       throw new Error(`Insufficient funds: available ${(totalSelected / 100000000).toFixed(8)} LANA, needed ${((totalAmountSatoshis + fee) / 100000000).toFixed(8)} LANA including fee`);
+      }
     }
     
     // Build and sign transaction
@@ -907,7 +941,7 @@ serve(async (req) => {
       ['from_wallet', from_wallet],
       ['to_wallet', to_wallet],
       ['tx', txid],
-      ['amount_lanoshis', String(amount_lanoshis)]
+      ['amount_lanoshis', String(totalAmountSatoshis)]
     ];
     
     if (memo) {
@@ -955,7 +989,9 @@ serve(async (req) => {
         success: true,
         txid,
         total_amount: totalAmountSatoshis,
+          requested_amount: requestedAmountSatoshis,
         fee,
+          fee_deducted_from_amount: shouldDeductFeeFromAmount && totalAmountSatoshis < requestedAmountSatoshis,
         output_count: recipientsInSatoshis.length,
         nostr_event_published: successCount > 0,
         nostr_event_id: nostrEvent.id,
