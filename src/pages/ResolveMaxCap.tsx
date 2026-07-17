@@ -255,7 +255,9 @@ const ResolveMaxCap = () => {
 
       toast.info('Building and broadcasting transaction...');
 
-      // Send ALL balance to donation wallet
+      // Lana8Wonder can be right at the spend limit, so let the backend deduct
+      // the real network fee from the outgoing amount if the estimated reserve
+      // is not enough for the selected UTXOs.
       const response = await supabase.functions.invoke('return-lanas-and-send-KIND-87009', {
         body: {
           sender_address: fromWallet,
@@ -270,6 +272,7 @@ const ResolveMaxCap = () => {
           from_wallet: fromWallet,
           to_wallet: donationWallet,
           amount_lanoshis: String(Math.round(sendAmount * 100000000)),
+          deduct_fee_from_amount: isLana8Wonder,
           memo: isLana8Wonder
             ? `Lana8Wonder due payment — ${triggeredLevels.length} level(s) triggered at price ${currentPrice} EUR/LANA.`
             : 'Max cap exceeded — balance donated to resolve freeze.'
