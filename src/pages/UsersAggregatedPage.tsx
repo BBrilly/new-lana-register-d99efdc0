@@ -49,6 +49,11 @@ const UsersAggregatedPage = () => {
     return arr;
   }, [walletBalances, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(groups.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const paginatedGroups = useMemo(() => groups.slice(startIdx, startIdx + PAGE_SIZE), [groups, startIdx]);
+
   const lanaLimit = lanaLimits?.EUR ?? null;
   const isOverLimit = (balance: number) => lanaLimit !== null && balance > lanaLimit;
 
