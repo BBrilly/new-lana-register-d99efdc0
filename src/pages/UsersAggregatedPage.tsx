@@ -174,6 +174,30 @@ const UsersAggregatedPage = () => {
             </div>
           )}
 
+          {excess && (
+            <div className="mb-6 rounded-lg border p-4 bg-sky-50/40 dark:bg-sky-900/15">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <AlertTriangle className="h-4 w-4 text-sky-500" /> Excess over limit (only the amount above the limit, summed per user)
+              </div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(["EUR", "GBP", "USD"] as const).map((cur) => (
+                  <div key={cur} className="rounded-md border bg-background/60 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      {cur} limit · {excess.usersOver[cur]} users over
+                    </div>
+                    <div className="mt-1 text-xl font-bold text-sky-700 dark:text-sky-300">
+                      {excess.lana[cur].toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      ≈ {excess.fiat[cur].toLocaleString("en-US", { style: "currency", currency: cur })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
