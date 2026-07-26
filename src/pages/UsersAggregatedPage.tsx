@@ -1,13 +1,15 @@
 import { Fragment, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake, AlertTriangle, ChevronLeft, ChevronLast, ChevronFirst } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { usePublicWalletBalances, WalletWithBalance } from "@/hooks/usePublicWalletBalances";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 300;
 
 const WALLET_TYPES = ["Wallet", "Main Wallet"];
 
@@ -27,6 +29,7 @@ const UsersAggregatedPage = () => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const groups = useMemo<UserGroup[]>(() => {
     const map = new Map<string, UserGroup>();
@@ -45,6 +48,11 @@ const UsersAggregatedPage = () => {
     arr.sort((a, b) => sortDir === "desc" ? b.totalBalance - a.totalBalance : a.totalBalance - b.totalBalance);
     return arr;
   }, [walletBalances, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(groups.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const paginatedGroups = useMemo(() => groups.slice(startIdx, startIdx + PAGE_SIZE), [groups, startIdx]);
 
   const lanaLimit = lanaLimits?.EUR ?? null;
   const isOverLimit = (balance: number) => lanaLimit !== null && balance > lanaLimit;
@@ -216,7 +224,7 @@ const UsersAggregatedPage = () => {
                         variant="ghost"
                         size="sm"
                         className="gap-1 -mr-3 font-medium"
-                        onClick={() => setSortDir(d => d === "desc" ? "asc" : "desc")}
+                        onClick={() => { setSortDir(d => d === "desc" ? "asc" : "desc"); setCurrentPage(1); }}
                       >
                         Total Balance {sortDir === "desc" ? "↓" : "↑"}
                       </Button>
@@ -231,9 +239,10 @@ const UsersAggregatedPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    groups.map((g, idx) => {
+                    paginatedGroups.map((g, idx) => {
                       const isOpen = expanded.has(g.key);
                       const overLimit = isOverLimit(g.totalBalance) && !g.anyFrozen;
+                      const globalIdx = startIdx + idx;
                       return (
                         <Fragment key={g.key}>
                           <TableRow
@@ -247,7 +256,7 @@ const UsersAggregatedPage = () => {
                             <TableCell>
                               {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </TableCell>
-                            <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
+                            <TableCell className="font-medium text-muted-foreground">{globalIdx + 1}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1.5">
                                 {g.anyFrozen && <Snowflake className="h-3.5 w-3.5 text-sky-500 shrink-0" />}
@@ -333,6 +342,55 @@ const UsersAggregatedPage = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {!isLoading && groups.length > PAGE_SIZE && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, groups.length)} of {groups.length} users
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safePage <= 1}
+                  aria-label="First page"
+                >
+                  <ChevronFirst className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground min-w-[6rem] text-center">
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safePage >= totalPages}
+                  aria-label="Last page"
+                >
+                  <ChevronLast className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </Card>
