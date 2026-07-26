@@ -29,6 +29,7 @@ const UsersAggregatedPage = () => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const groups = useMemo<UserGroup[]>(() => {
     const map = new Map<string, UserGroup>();
