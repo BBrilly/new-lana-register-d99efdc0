@@ -1,13 +1,15 @@
 import { Fragment, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Copy, Check, Snowflake, AlertTriangle, ChevronLeft, ChevronLast, ChevronFirst } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { usePublicWalletBalances, WalletWithBalance } from "@/hooks/usePublicWalletBalances";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 300;
 
 const WALLET_TYPES = ["Wallet", "Main Wallet"];
 
