@@ -65,6 +65,26 @@ const UsersAggregatedPage = () => {
     };
   }, [groups, lanaLimit]);
 
+  // Excess = amount ABOVE the limit only (per user), per currency limit
+  const excess = useMemo(() => {
+    if (!lanaLimits || !fxRates) return null;
+    const calc = (limit: number) =>
+      groups.reduce((s, g) => s + Math.max(0, g.totalBalance - limit), 0);
+    const eur = calc(lanaLimits.EUR);
+    const gbp = calc(lanaLimits.GBP);
+    const usd = calc(lanaLimits.USD);
+    return {
+      lana: { EUR: eur, GBP: gbp, USD: usd },
+      fiat: { EUR: eur * fxRates.EUR, GBP: gbp * fxRates.GBP, USD: usd * fxRates.USD },
+      usersOver: {
+        EUR: groups.filter(g => g.totalBalance > lanaLimits.EUR).length,
+        GBP: groups.filter(g => g.totalBalance > lanaLimits.GBP).length,
+        USD: groups.filter(g => g.totalBalance > lanaLimits.USD).length,
+      },
+    };
+  }, [groups, lanaLimits, fxRates]);
+
+
   const toggle = (key: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
