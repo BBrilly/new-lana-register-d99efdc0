@@ -239,9 +239,10 @@ const UsersAggregatedPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    groups.map((g, idx) => {
+                    paginatedGroups.map((g, idx) => {
                       const isOpen = expanded.has(g.key);
                       const overLimit = isOverLimit(g.totalBalance) && !g.anyFrozen;
+                      const globalIdx = startIdx + idx;
                       return (
                         <Fragment key={g.key}>
                           <TableRow
@@ -255,7 +256,7 @@ const UsersAggregatedPage = () => {
                             <TableCell>
                               {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </TableCell>
-                            <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
+                            <TableCell className="font-medium text-muted-foreground">{globalIdx + 1}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1.5">
                                 {g.anyFrozen && <Snowflake className="h-3.5 w-3.5 text-sky-500 shrink-0" />}
