@@ -344,6 +344,55 @@ const UsersAggregatedPage = () => {
               </Table>
             </div>
           )}
+
+          {!isLoading && groups.length > PAGE_SIZE && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, groups.length)} of {groups.length} users
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safePage <= 1}
+                  aria-label="First page"
+                >
+                  <ChevronFirst className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground min-w-[6rem] text-center">
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safePage >= totalPages}
+                  aria-label="Last page"
+                >
+                  <ChevronLast className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>
