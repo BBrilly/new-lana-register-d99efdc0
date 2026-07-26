@@ -224,7 +224,7 @@ const UsersAggregatedPage = () => {
                         variant="ghost"
                         size="sm"
                         className="gap-1 -mr-3 font-medium"
-                        onClick={() => setSortDir(d => d === "desc" ? "asc" : "desc")}
+                        onClick={() => { setSortDir(d => d === "desc" ? "asc" : "desc"); setCurrentPage(1); }}
                       >
                         Total Balance {sortDir === "desc" ? "↓" : "↑"}
                       </Button>
