@@ -89,6 +89,21 @@ const FrozenAccountsTab = () => {
         }
       }
 
+      // Authoritative freeze dates from the KIND 87010 history (fallback: updated_at)
+      const freezeDates = new Map<string, string>();
+      const { data: history } = await supabase
+        .from("wallet_freeze_events")
+        .select("wallet_uuid, effective_at")
+        .eq("status", "frozen")
+        .order("effective_at", { ascending: false })
+        .limit(10000);
+
+      for (const h of history || []) {
+        if (h.wallet_uuid && !freezeDates.has(h.wallet_uuid)) {
+          freezeDates.set(h.wallet_uuid, h.effective_at as string);
+        }
+      }
+
       return allWallets.map((w): FrozenWallet => ({
         id: w.id,
         wallet_id: w.wallet_id,
@@ -99,9 +114,10 @@ const FrozenAccountsTab = () => {
         owner_display_name: (w.main_wallet as any)?.display_name || null,
         nostr_hex_id: (w.main_wallet as any)?.nostr_hex_id || null,
         main_wallet_id: w.main_wallet_id,
-        frozen_at: w.updated_at || null,
+        frozen_at: freezeDates.get(w.id) || w.updated_at || null,
       }));
     },
+
   });
 
   const addressList = (frozenWallets || []).map((w) => w.wallet_id);
