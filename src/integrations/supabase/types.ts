@@ -609,6 +609,51 @@ export type Database = {
           },
         ]
       }
+      wallet_freeze_events: {
+        Row: {
+          amount_lanoshis: number
+          created_at: string
+          effective_at: string
+          frozen_at: string | null
+          id: string
+          nostr_event_id: string | null
+          nostr_hex_id: string
+          published_at: string | null
+          reason: string
+          status: string
+          wallet_address: string
+          wallet_uuid: string | null
+        }
+        Insert: {
+          amount_lanoshis?: number
+          created_at?: string
+          effective_at?: string
+          frozen_at?: string | null
+          id?: string
+          nostr_event_id?: string | null
+          nostr_hex_id: string
+          published_at?: string | null
+          reason?: string
+          status: string
+          wallet_address: string
+          wallet_uuid?: string | null
+        }
+        Update: {
+          amount_lanoshis?: number
+          created_at?: string
+          effective_at?: string
+          frozen_at?: string | null
+          id?: string
+          nostr_event_id?: string | null
+          nostr_hex_id?: string
+          published_at?: string | null
+          reason?: string
+          status?: string
+          wallet_address?: string
+          wallet_uuid?: string | null
+        }
+        Relationships: []
+      }
       wallet_types: {
         Row: {
           created_at: string
