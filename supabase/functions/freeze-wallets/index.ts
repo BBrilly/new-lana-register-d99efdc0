@@ -83,6 +83,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Snapshot state BEFORE the update (needed for 87010 reason / frozen_at)
+    const { data: walletsBefore } = await supabase
+      .from("wallets")
+      .select("id, wallet_id, frozen, freeze_reason, updated_at")
+      .in("id", wallet_ids);
+
     // Update frozen status and freeze_reason in database
     const { error: updateError } = await supabase
       .from("wallets")
@@ -98,6 +104,33 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[${correlationId}] Updated ${wallet_ids.length} wallets: frozen=${freeze}`);
+
+    // Publish KIND 87010 (append-only freeze/unfreeze audit trail) — one event per wallet
+    try {
+      const effectiveAt = new Date();
+      const entries = [] as any[];
+      for (const w of walletsBefore || []) {
+        if (!w.wallet_id) continue;
+        // Only announce actual state transitions
+        if (!!w.frozen === !!freeze) continue;
+        entries.push({
+          wallet_uuid: w.id,
+          wallet_address: w.wallet_id,
+          nostr_hex_id,
+          status: freeze ? "frozen" : "unfrozen",
+          reason: freeze ? resolvedFreezeCode : (w.freeze_reason || resolvedFreezeCode),
+          effective_at: effectiveAt,
+          frozen_at: freeze ? null : await getLastFrozenAt(supabase, w.id, w.updated_at),
+        });
+      }
+      if (entries.length > 0) {
+        const res = await publish87010(supabase, entries, correlationId);
+        console.log(`[${correlationId}] KIND 87010: published ${res.published}/${res.total}`);
+      }
+    } catch (e) {
+      console.error(`[${correlationId}] KIND 87010 error (wallets still updated):`, e);
+    }
+
 
     // Find main_wallet for this nostr_hex_id
     const { data: mainWallet } = await supabase
