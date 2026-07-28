@@ -236,10 +236,11 @@ Deno.serve(async (req) => {
 
       const { data: wallets } = await supabase
         .from("wallets")
-        .select("id, frozen, freeze_reason")
+        .select("id, wallet_id, frozen, freeze_reason, updated_at")
         .eq("main_wallet_id", mw.id);
 
       let changed = false;
+      let transitioned: any[] = [];
 
       if (u.shouldBeFrozen) {
         // Freeze wallets that are not already frozen (don't override other reasons)
@@ -251,6 +252,7 @@ Deno.serve(async (req) => {
             .in("id", toFreeze.map((w: any) => w.id));
           if (!error) {
             changed = true;
+            transitioned = toFreeze;
             log(`❄ Froze ${toFreeze.length} wallets for ${u.pubkey.substring(0, 12)}`);
           }
         }
@@ -266,13 +268,46 @@ Deno.serve(async (req) => {
             .in("id", toUnfreeze.map((w: any) => w.id));
           if (!error) {
             changed = true;
+            transitioned = toUnfreeze;
             log(`☀ Unfroze ${toUnfreeze.length} wallets for ${u.pubkey.substring(0, 12)}`);
           }
         }
       }
 
+      // KIND 87010 — one append-only event per wallet transition
+      if (changed && transitioned.length > 0) {
+        try {
+          const effectiveAt = new Date();
+          const entries: any[] = [];
+          for (const w of transitioned) {
+            if (!w.wallet_id) continue;
+            entries.push({
+              wallet_uuid: w.id,
+              wallet_address: w.wallet_id,
+              nostr_hex_id: u.pubkey,
+              status: u.shouldBeFrozen ? "frozen" : "unfrozen",
+              reason: u.shouldBeFrozen ? FREEZE_REASON : (w.freeze_reason || FREEZE_REASON),
+              effective_at: effectiveAt,
+              frozen_at: u.shouldBeFrozen
+                ? null
+                : await getLastFrozenAt(supabase, w.id, w.updated_at),
+              memo: u.shouldBeFrozen
+                ? "OWN exit announced (KIND 87055)."
+                : "OWN re-entry announced (KIND 87055).",
+            });
+          }
+          if (entries.length > 0) {
+            const res = await publish87010(supabase, entries, cid);
+            log(`KIND 87010: published ${res.published}/${res.total}`);
+          }
+        } catch (e) {
+          log(`✗ KIND 87010 failed: ${(e as Error).message}`);
+        }
+      }
+
       if (changed) pubkeysChanged.push(u.pubkey);
     }
+
 
     // 9. Broadcast KIND 30889 for each changed pubkey
     if (pubkeysChanged.length > 0 && privateKeyHex) {
