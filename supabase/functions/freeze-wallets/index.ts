@@ -1,6 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SimplePool, finalizeEvent } from "https://esm.sh/nostr-tools@2.7.0";
 import { decode as nip19decode } from "https://esm.sh/nostr-tools@2.7.0/nip19";
+import { publish87010, getLastFrozenAt } from "../_shared/publish87010.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
