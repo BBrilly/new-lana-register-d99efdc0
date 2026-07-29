@@ -222,10 +222,12 @@ const Lana8WonderHoldersTab = () => {
                     </TableRow>
                   ) : (
                     filtered.map((h, idx) => {
-                      const allFrozen = h.frozenCount === h.walletCount && h.walletCount > 0;
-                      const justFrozen = frozenKeys.has(h.key);
+                      const isWalletFrozen = (w: WalletWithBalance) =>
+                        unfrozenWalletIds.has(w.id) ? false : (w.frozen || frozenWalletIds.has(w.id));
+                      const frozenNow = h.wallets.filter(isWalletFrozen).length;
+                      const allFrozen = frozenNow === h.walletCount && h.walletCount > 0;
                       const isOpen = expanded.has(h.key);
-                      const freezable = h.wallets.filter(w => !w.frozen && !frozenWalletIds.has(w.id) && w.balance > 0).length;
+                      const freezable = h.wallets.filter(w => !isWalletFrozen(w) && w.balance > 0).length;
                       return (
                         <Fragment key={h.key}>
                           <TableRow className="cursor-pointer" onClick={() => toggleExpand(h.key)}>
@@ -251,37 +253,53 @@ const Lana8WonderHoldersTab = () => {
                               {eurRate > 0 ? `€${fmtEur(h.totalBalance * eurRate)}` : "—"}
                             </TableCell>
                             <TableCell className="text-center">
-                              {allFrozen || justFrozen ? (
+                              {allFrozen ? (
                                 <Badge variant="destructive" className="gap-1">
                                   <Snowflake className="h-3 w-3" />
                                   Frozen
                                 </Badge>
-                              ) : h.frozenCount > 0 ? (
+                              ) : frozenNow > 0 ? (
                                 <Badge variant="outline" className="gap-1 border-sky-300 text-sky-700 dark:text-sky-300">
                                   <Snowflake className="h-3 w-3" />
-                                  {h.frozenCount}/{h.walletCount}
+                                  {frozenNow}/{h.walletCount}
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="text-muted-foreground">Active</Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="gap-1"
-                                disabled={allFrozen || !h.nostrHexId || freezable === 0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTarget({ kind: "holder", holder: h });
-                                  setFreezeReason("frozen_too_wild");
-                                }}
-                              >
-                                <Snowflake className="h-3.5 w-3.5" />
-                                Freeze all ({freezable})
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="gap-1"
+                                  disabled={!h.nostrHexId || freezable === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTarget({ kind: "holder", action: "freeze", holder: h });
+                                    setFreezeReason("frozen_too_wild");
+                                  }}
+                                >
+                                  <Snowflake className="h-3.5 w-3.5" />
+                                  Freeze all ({freezable})
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  disabled={!h.nostrHexId || frozenNow === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTarget({ kind: "holder", action: "unfreeze", holder: h });
+                                  }}
+                                >
+                                  <Sun className="h-3.5 w-3.5" />
+                                  Unfreeze all ({frozenNow})
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
+
                           {isOpen && (
                             <TableRow className="bg-muted/30 hover:bg-muted/30">
                               <TableCell colSpan={8} className="p-0">
