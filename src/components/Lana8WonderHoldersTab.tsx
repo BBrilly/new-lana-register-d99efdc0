@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Snowflake, Loader2, Sparkles, Search, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { Snowflake, Loader2, Sparkles, Search, ChevronDown, ChevronRight, Copy, Check, Sun } from "lucide-react";
 import { usePublicWalletBalances, WalletWithBalance } from "@/hooks/usePublicWalletBalances";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -36,8 +36,8 @@ interface Holder {
 }
 
 type FreezeTarget =
-  | { kind: "holder"; holder: Holder }
-  | { kind: "wallet"; holder: Holder; wallet: WalletWithBalance };
+  | { kind: "holder"; action: "freeze" | "unfreeze"; holder: Holder }
+  | { kind: "wallet"; action: "freeze" | "unfreeze"; holder: Holder; wallet: WalletWithBalance };
 
 const Lana8WonderHoldersTab = () => {
   const { walletBalances, isLoading, fxRates } = usePublicWalletBalances(WALLET_TYPES);
@@ -46,6 +46,8 @@ const Lana8WonderHoldersTab = () => {
   const [isFreezing, setIsFreezing] = useState(false);
   const [frozenKeys, setFrozenKeys] = useState<Set<string>>(new Set());
   const [frozenWalletIds, setFrozenWalletIds] = useState<Set<string>>(new Set());
+  const [unfrozenKeys, setUnfrozenKeys] = useState<Set<string>>(new Set());
+  const [unfrozenWalletIds, setUnfrozenWalletIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -107,13 +109,16 @@ const Lana8WonderHoldersTab = () => {
   const handleFreezeConfirm = async () => {
     if (!target) return;
     const holder = target.holder;
-    const toFreeze =
+    const doFreeze = target.action === "freeze";
+    const ids =
       target.kind === "wallet"
         ? [target.wallet.id]
-        : holder.wallets.filter(w => !w.frozen && w.balance > 0).map(w => w.id);
+        : doFreeze
+          ? holder.wallets.filter(w => !w.frozen && w.balance > 0).map(w => w.id)
+          : holder.wallets.filter(w => w.frozen).map(w => w.id);
 
-    if (toFreeze.length === 0) {
-      toast.info("Nothing to freeze");
+    if (ids.length === 0) {
+      toast.info(doFreeze ? "Nothing to freeze" : "Nothing to unfreeze");
       setTarget(null);
       return;
     }
@@ -121,30 +126,45 @@ const Lana8WonderHoldersTab = () => {
     try {
       const { error } = await supabase.functions.invoke("freeze-wallets", {
         body: {
-          wallet_ids: toFreeze,
-          freeze: true,
-          freeze_reason: freezeReason,
+          wallet_ids: ids,
+          freeze: doFreeze,
+          freeze_reason: doFreeze ? freezeReason : undefined,
           nostr_hex_id: holder.nostrHexId,
         },
       });
       if (error) throw error;
       toast.success(
-        target.kind === "wallet"
-          ? `Froze wallet for ${holder.name}`
-          : `Froze ${toFreeze.length} Lana8Wonder wallet${toFreeze.length === 1 ? "" : "s"} for ${holder.name}`
+        `${doFreeze ? "Froze" : "Unfroze"} ${ids.length} Lana8Wonder wallet${ids.length === 1 ? "" : "s"} for ${holder.name}`
       );
       if (target.kind === "wallet") {
-        setFrozenWalletIds(prev => new Set(prev).add(target.wallet.id));
+        const id = target.wallet.id;
+        if (doFreeze) {
+          setFrozenWalletIds(prev => new Set(prev).add(id));
+          setUnfrozenWalletIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+        } else {
+          setUnfrozenWalletIds(prev => new Set(prev).add(id));
+          setFrozenWalletIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+        }
       } else {
-        setFrozenKeys(prev => new Set(prev).add(holder.key));
+        if (doFreeze) {
+          setFrozenKeys(prev => new Set(prev).add(holder.key));
+          setUnfrozenKeys(prev => { const n = new Set(prev); n.delete(holder.key); return n; });
+          setUnfrozenWalletIds(prev => { const n = new Set(prev); ids.forEach(i => n.delete(i)); return n; });
+        } else {
+          setUnfrozenKeys(prev => new Set(prev).add(holder.key));
+          setFrozenKeys(prev => { const n = new Set(prev); n.delete(holder.key); return n; });
+          setUnfrozenWalletIds(prev => { const n = new Set(prev); ids.forEach(i => n.add(i)); return n; });
+          setFrozenWalletIds(prev => { const n = new Set(prev); ids.forEach(i => n.delete(i)); return n; });
+        }
       }
       setTarget(null);
     } catch (err: any) {
-      toast.error(err.message || "Error freezing wallets");
+      toast.error(err.message || "Error updating wallets");
     } finally {
       setIsFreezing(false);
     }
   };
+
 
   return (
     <div className="space-y-4">
@@ -202,10 +222,12 @@ const Lana8WonderHoldersTab = () => {
                     </TableRow>
                   ) : (
                     filtered.map((h, idx) => {
-                      const allFrozen = h.frozenCount === h.walletCount && h.walletCount > 0;
-                      const justFrozen = frozenKeys.has(h.key);
+                      const isWalletFrozen = (w: WalletWithBalance) =>
+                        unfrozenWalletIds.has(w.id) ? false : (w.frozen || frozenWalletIds.has(w.id));
+                      const frozenNow = h.wallets.filter(isWalletFrozen).length;
+                      const allFrozen = frozenNow === h.walletCount && h.walletCount > 0;
                       const isOpen = expanded.has(h.key);
-                      const freezable = h.wallets.filter(w => !w.frozen && !frozenWalletIds.has(w.id) && w.balance > 0).length;
+                      const freezable = h.wallets.filter(w => !isWalletFrozen(w) && w.balance > 0).length;
                       return (
                         <Fragment key={h.key}>
                           <TableRow className="cursor-pointer" onClick={() => toggleExpand(h.key)}>
@@ -231,37 +253,53 @@ const Lana8WonderHoldersTab = () => {
                               {eurRate > 0 ? `€${fmtEur(h.totalBalance * eurRate)}` : "—"}
                             </TableCell>
                             <TableCell className="text-center">
-                              {allFrozen || justFrozen ? (
+                              {allFrozen ? (
                                 <Badge variant="destructive" className="gap-1">
                                   <Snowflake className="h-3 w-3" />
                                   Frozen
                                 </Badge>
-                              ) : h.frozenCount > 0 ? (
+                              ) : frozenNow > 0 ? (
                                 <Badge variant="outline" className="gap-1 border-sky-300 text-sky-700 dark:text-sky-300">
                                   <Snowflake className="h-3 w-3" />
-                                  {h.frozenCount}/{h.walletCount}
+                                  {frozenNow}/{h.walletCount}
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="text-muted-foreground">Active</Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="gap-1"
-                                disabled={allFrozen || !h.nostrHexId || freezable === 0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTarget({ kind: "holder", holder: h });
-                                  setFreezeReason("frozen_too_wild");
-                                }}
-                              >
-                                <Snowflake className="h-3.5 w-3.5" />
-                                Freeze all ({freezable})
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="gap-1"
+                                  disabled={!h.nostrHexId || freezable === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTarget({ kind: "holder", action: "freeze", holder: h });
+                                    setFreezeReason("frozen_too_wild");
+                                  }}
+                                >
+                                  <Snowflake className="h-3.5 w-3.5" />
+                                  Freeze all ({freezable})
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  disabled={!h.nostrHexId || frozenNow === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTarget({ kind: "holder", action: "unfreeze", holder: h });
+                                  }}
+                                >
+                                  <Sun className="h-3.5 w-3.5" />
+                                  Unfreeze all ({frozenNow})
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
+
                           {isOpen && (
                             <TableRow className="bg-muted/30 hover:bg-muted/30">
                               <TableCell colSpan={8} className="p-0">
@@ -282,7 +320,7 @@ const Lana8WonderHoldersTab = () => {
                                         .slice()
                                         .sort((a, b) => b.balance - a.balance)
                                         .map((w) => {
-                                          const isFrozen = w.frozen || frozenWalletIds.has(w.id);
+                                          const isFrozen = isWalletFrozen(w);
                                           return (
                                             <TableRow key={w.id} className={cn(isFrozen && "bg-sky-50 dark:bg-sky-950/30")}>
                                               <TableCell>
@@ -327,21 +365,38 @@ const Lana8WonderHoldersTab = () => {
                                                 )}
                                               </TableCell>
                                               <TableCell className="text-right">
-                                                <Button
-                                                  size="sm"
-                                                  variant="destructive"
-                                                  className="gap-1"
-                                                  disabled={isFrozen || !h.nostrHexId}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setTarget({ kind: "wallet", holder: h, wallet: w });
-                                                    setFreezeReason("frozen_too_wild");
-                                                  }}
-                                                >
-                                                  <Snowflake className="h-3.5 w-3.5" />
-                                                  Freeze
-                                                </Button>
+                                                {isFrozen ? (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="gap-1"
+                                                    disabled={!h.nostrHexId}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setTarget({ kind: "wallet", action: "unfreeze", holder: h, wallet: w });
+                                                    }}
+                                                  >
+                                                    <Sun className="h-3.5 w-3.5" />
+                                                    Unfreeze
+                                                  </Button>
+                                                ) : (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    className="gap-1"
+                                                    disabled={!h.nostrHexId}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setTarget({ kind: "wallet", action: "freeze", holder: h, wallet: w });
+                                                      setFreezeReason("frozen_too_wild");
+                                                    }}
+                                                  >
+                                                    <Snowflake className="h-3.5 w-3.5" />
+                                                    Freeze
+                                                  </Button>
+                                                )}
                                               </TableCell>
+
                                             </TableRow>
                                           );
                                         })}
@@ -366,46 +421,61 @@ const Lana8WonderHoldersTab = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Snowflake className="h-5 w-5 text-destructive" />
+              {target?.action === "unfreeze"
+                ? <Sun className="h-5 w-5 text-primary" />
+                : <Snowflake className="h-5 w-5 text-destructive" />}
               {target?.kind === "wallet"
-                ? `Freeze wallet for ${target.holder.name}`
-                : `Freeze all Lana8Wonder wallets for ${target?.holder.name}`}
+                ? `${target.action === "unfreeze" ? "Unfreeze" : "Freeze"} wallet for ${target.holder.name}`
+                : `${target?.action === "unfreeze" ? "Unfreeze" : "Freeze"} all Lana8Wonder wallets for ${target?.holder.name}`}
             </DialogTitle>
             <DialogDescription>
               {target?.kind === "wallet" ? (
                 <>
-                  This will freeze a single Lana8Wonder wallet holding {fmtLana(target.wallet.balance)} LANA.
+                  This will {target.action} a single Lana8Wonder wallet holding {fmtLana(target.wallet.balance)} LANA.
                 </>
               ) : target ? (
                 <>
-                  This will freeze {target.holder.wallets.filter(w => !w.frozen && w.balance > 0).length} Lana8Wonder wallet(s)
-                  totalling {fmtLana(target.holder.totalBalance)} LANA.
+                  This will {target.action}{" "}
+                  {target.action === "unfreeze"
+                    ? target.holder.wallets.filter(w => w.frozen).length
+                    : target.holder.wallets.filter(w => !w.frozen && w.balance > 0).length}{" "}
+                  Lana8Wonder wallet(s).
                 </>
               ) : null}
-              {" "}Action is broadcast via KIND 30889 to all relays.
+              {" "}Action is broadcast via KIND 30889 / 87010 to all relays.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Select value={freezeReason} onValueChange={setFreezeReason}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select freeze reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {FREEZE_CODES.map(c => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {target?.action === "freeze" && (
+            <div className="py-4">
+              <Select value={freezeReason} onValueChange={setFreezeReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select freeze reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREEZE_CODES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setTarget(null)} disabled={isFreezing}>Cancel</Button>
-            <Button variant="destructive" onClick={handleFreezeConfirm} disabled={isFreezing} className="gap-2">
-              {isFreezing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Snowflake className="h-4 w-4" />}
-              Confirm Freeze
+            <Button
+              variant={target?.action === "unfreeze" ? "default" : "destructive"}
+              onClick={handleFreezeConfirm}
+              disabled={isFreezing}
+              className="gap-2"
+            >
+              {isFreezing
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : target?.action === "unfreeze" ? <Sun className="h-4 w-4" /> : <Snowflake className="h-4 w-4" />}
+              {target?.action === "unfreeze" ? "Confirm Unfreeze" : "Confirm Freeze"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };
