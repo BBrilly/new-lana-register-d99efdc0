@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAllNostrEvents, latoshisToLana, clearAllNostrEventsCache } from "@/hooks/useAllNostrEvents";
 
 const PER_PAGE = 50;
+const MAX_RECORDS = 1000;
 
 const UnregisteredLanasPage = () => {
   const navigate = useNavigate();
