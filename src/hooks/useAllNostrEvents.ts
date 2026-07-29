@@ -76,8 +76,10 @@ const CACHE_DURATION_MS = 60000; // 1 minute cache
 
 // Function to fetch all events
 const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events87009: Kind87009Event[]; profiles: Map<string, NostrProfile> }> => {
+  await ensureSystemParameters();
   const params = getStoredParameters();
   const relayStatuses = getStoredRelayStatuses();
+
   
   const defaultRelays = [
     'wss://relay.lanavault.space',
