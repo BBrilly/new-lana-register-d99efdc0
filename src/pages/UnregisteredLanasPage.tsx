@@ -36,15 +36,18 @@ const UnregisteredLanasPage = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return events;
-    return events.filter(
-      (e) =>
-        e.walletId?.toLowerCase().includes(q) ||
-        e.userPubkey?.toLowerCase().includes(q) ||
-        e.profile?.displayName?.toLowerCase().includes(q) ||
-        e.profile?.name?.toLowerCase().includes(q),
-    );
+    const base = q
+      ? events.filter(
+          (e) =>
+            e.walletId?.toLowerCase().includes(q) ||
+            e.userPubkey?.toLowerCase().includes(q) ||
+            e.profile?.displayName?.toLowerCase().includes(q) ||
+            e.profile?.name?.toLowerCase().includes(q),
+        )
+      : events;
+    return base.slice(0, MAX_RECORDS);
   }, [events, search]);
+
 
   const totalLana = useMemo(
     () => filtered.reduce((s, e) => s + latoshisToLana(e.unregisteredAmountLatoshis), 0),
