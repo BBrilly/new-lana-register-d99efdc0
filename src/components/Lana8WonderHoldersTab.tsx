@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Snowflake, Loader2, Sparkles, Search, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { Snowflake, Loader2, Sparkles, Search, ChevronDown, ChevronRight, Copy, Check, Sun } from "lucide-react";
 import { usePublicWalletBalances, WalletWithBalance } from "@/hooks/usePublicWalletBalances";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
