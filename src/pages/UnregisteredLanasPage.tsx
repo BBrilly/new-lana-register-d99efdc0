@@ -97,7 +97,13 @@ const UnregisteredLanasPage = () => {
             <div className="rounded-lg border p-3">
               <div className="text-xs text-muted-foreground">Events</div>
               <div className="text-lg font-semibold">{filtered.length}</div>
+              {events.length > MAX_RECORDS && (
+                <div className="text-[11px] text-muted-foreground">
+                  showing newest {MAX_RECORDS} of {events.length}
+                </div>
+              )}
             </div>
+
             <div className="rounded-lg border p-3">
               <div className="text-xs text-muted-foreground">Total unregistered</div>
               <div className="text-lg font-semibold">{totalLana.toFixed(4)} LANA</div>
