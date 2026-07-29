@@ -26,6 +26,7 @@ export const PUBLIC_LINKS = [
   { path: "/retail-wallets", label: "Retail Wallets", icon: Store },
   { path: "/lana-discount", label: "Lana.Discount", icon: Tag },
   { path: "/frozen-wallets", label: "Frozen Wallets", icon: Snowflake },
+  { path: "/unregistered-lanas", label: "Unregistered Lanas", icon: AlertTriangle },
   { path: "/unregistered-over-limit", label: "Over-Limit Lanas", icon: AlertTriangle },
   { path: "/unregistered-dust", label: "Dust Lanas", icon: Sparkles },
   { path: "/public-api", label: "Public Data", icon: Globe },
