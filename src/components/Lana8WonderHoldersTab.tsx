@@ -36,8 +36,8 @@ interface Holder {
 }
 
 type FreezeTarget =
-  | { kind: "holder"; holder: Holder }
-  | { kind: "wallet"; holder: Holder; wallet: WalletWithBalance };
+  | { kind: "holder"; action: "freeze" | "unfreeze"; holder: Holder }
+  | { kind: "wallet"; action: "freeze" | "unfreeze"; holder: Holder; wallet: WalletWithBalance };
 
 const Lana8WonderHoldersTab = () => {
   const { walletBalances, isLoading, fxRates } = usePublicWalletBalances(WALLET_TYPES);
@@ -46,6 +46,8 @@ const Lana8WonderHoldersTab = () => {
   const [isFreezing, setIsFreezing] = useState(false);
   const [frozenKeys, setFrozenKeys] = useState<Set<string>>(new Set());
   const [frozenWalletIds, setFrozenWalletIds] = useState<Set<string>>(new Set());
+  const [unfrozenKeys, setUnfrozenKeys] = useState<Set<string>>(new Set());
+  const [unfrozenWalletIds, setUnfrozenWalletIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
