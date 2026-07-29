@@ -105,6 +105,9 @@ const FreezeManager = () => {
     { value: "frozen_lanapays_outdated", label: "Out-dated Wallet for LanaPays.Us", description: "Frozen because LanaPays.Us wallet was created more than 2 splits ago" },
     { value: "frozen_retail_unallowed", label: "Retail Wallet — un-allowed transactions", description: "Frozen due to un-allowed transactions on a Retail wallet" },
     { value: "frozen_retail_over_limit", label: "Retail Wallet — over the Limit", description: "Frozen because Retail wallet exceeded the allowed limit" },
+    { value: "frozen_own_threatening", label: "OWN — Threatening", description: "Frozen due to threatening behaviour towards OWN" },
+    { value: "frozen_own_public_attack", label: "OWN — Public attack", description: "Frozen due to public attack against OWN" },
+    { value: "frozen_own_no_responsibility", label: "OWN — Failing to accept responsibility", description: "Frozen due to failing to accept responsibility" },
   ];
 
   const handleSearch = async () => {
