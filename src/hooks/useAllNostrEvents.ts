@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
 import { SimplePool, Event, Filter } from 'nostr-tools';
-import { getStoredParameters, getStoredRelayStatuses } from '@/utils/nostrClient';
+import { NostrClient, getStoredParameters, getStoredRelayStatuses } from '@/utils/nostrClient';
+
+// Make sure KIND 38888 system parameters (relays + trusted signers) are loaded.
+// Standalone pages don't run the landing page bootstrap, so without this the
+// trusted-signer list is empty and every event gets filtered out.
+const ensureSystemParameters = async () => {
+  if (getStoredParameters()) return;
+  try {
+    const client = new NostrClient();
+    await client.fetchSystemParameters();
+  } catch (e) {
+    console.error('[AllNostrEvents] Failed to load system parameters:', e);
+  }
+};
+
 
 // Collect all trusted signer pubkeys from KIND 38888 system parameters.
 // Only events authored by one of these pubkeys are surfaced in the UI.
@@ -62,8 +76,10 @@ const CACHE_DURATION_MS = 60000; // 1 minute cache
 
 // Function to fetch all events
 const fetchAllEvents = async (): Promise<{ events87003: Kind87003Event[]; events87009: Kind87009Event[]; profiles: Map<string, NostrProfile> }> => {
+  await ensureSystemParameters();
   const params = getStoredParameters();
   const relayStatuses = getStoredRelayStatuses();
+
   
   const defaultRelays = [
     'wss://relay.lanavault.space',
