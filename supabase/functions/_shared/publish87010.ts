@@ -15,6 +15,9 @@ export function mapReasonToSpec(reason?: string | null): string {
       return r;
     case "frozen_unreg_Lanas":
     case "frozen_own":
+    case "frozen_own_threatening":
+    case "frozen_own_public_attack":
+    case "frozen_own_no_responsibility":
       return "frozen_too_wild";
     default:
       return r === "" ? "frozen_l8w" : "frozen_l8w";
