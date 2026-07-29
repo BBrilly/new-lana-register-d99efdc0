@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAllNostrEvents, latoshisToLana, clearAllNostrEventsCache } from "@/hooks/useAllNostrEvents";
 
 const PER_PAGE = 50;
+const MAX_RECORDS = 1000;
 
 const UnregisteredLanasPage = () => {
   const navigate = useNavigate();
@@ -35,15 +36,18 @@ const UnregisteredLanasPage = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return events;
-    return events.filter(
-      (e) =>
-        e.walletId?.toLowerCase().includes(q) ||
-        e.userPubkey?.toLowerCase().includes(q) ||
-        e.profile?.displayName?.toLowerCase().includes(q) ||
-        e.profile?.name?.toLowerCase().includes(q),
-    );
+    const base = q
+      ? events.filter(
+          (e) =>
+            e.walletId?.toLowerCase().includes(q) ||
+            e.userPubkey?.toLowerCase().includes(q) ||
+            e.profile?.displayName?.toLowerCase().includes(q) ||
+            e.profile?.name?.toLowerCase().includes(q),
+        )
+      : events;
+    return base.slice(0, MAX_RECORDS);
   }, [events, search]);
+
 
   const totalLana = useMemo(
     () => filtered.reduce((s, e) => s + latoshisToLana(e.unregisteredAmountLatoshis), 0),
@@ -93,7 +97,13 @@ const UnregisteredLanasPage = () => {
             <div className="rounded-lg border p-3">
               <div className="text-xs text-muted-foreground">Events</div>
               <div className="text-lg font-semibold">{filtered.length}</div>
+              {events.length > MAX_RECORDS && (
+                <div className="text-[11px] text-muted-foreground">
+                  showing newest {MAX_RECORDS} of {events.length}
+                </div>
+              )}
             </div>
+
             <div className="rounded-lg border p-3">
               <div className="text-xs text-muted-foreground">Total unregistered</div>
               <div className="text-lg font-semibold">{totalLana.toFixed(4)} LANA</div>
