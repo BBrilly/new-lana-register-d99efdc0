@@ -421,46 +421,61 @@ const Lana8WonderHoldersTab = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Snowflake className="h-5 w-5 text-destructive" />
+              {target?.action === "unfreeze"
+                ? <Sun className="h-5 w-5 text-primary" />
+                : <Snowflake className="h-5 w-5 text-destructive" />}
               {target?.kind === "wallet"
-                ? `Freeze wallet for ${target.holder.name}`
-                : `Freeze all Lana8Wonder wallets for ${target?.holder.name}`}
+                ? `${target.action === "unfreeze" ? "Unfreeze" : "Freeze"} wallet for ${target.holder.name}`
+                : `${target?.action === "unfreeze" ? "Unfreeze" : "Freeze"} all Lana8Wonder wallets for ${target?.holder.name}`}
             </DialogTitle>
             <DialogDescription>
               {target?.kind === "wallet" ? (
                 <>
-                  This will freeze a single Lana8Wonder wallet holding {fmtLana(target.wallet.balance)} LANA.
+                  This will {target.action} a single Lana8Wonder wallet holding {fmtLana(target.wallet.balance)} LANA.
                 </>
               ) : target ? (
                 <>
-                  This will freeze {target.holder.wallets.filter(w => !w.frozen && w.balance > 0).length} Lana8Wonder wallet(s)
-                  totalling {fmtLana(target.holder.totalBalance)} LANA.
+                  This will {target.action}{" "}
+                  {target.action === "unfreeze"
+                    ? target.holder.wallets.filter(w => w.frozen).length
+                    : target.holder.wallets.filter(w => !w.frozen && w.balance > 0).length}{" "}
+                  Lana8Wonder wallet(s).
                 </>
               ) : null}
-              {" "}Action is broadcast via KIND 30889 to all relays.
+              {" "}Action is broadcast via KIND 30889 / 87010 to all relays.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Select value={freezeReason} onValueChange={setFreezeReason}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select freeze reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {FREEZE_CODES.map(c => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {target?.action === "freeze" && (
+            <div className="py-4">
+              <Select value={freezeReason} onValueChange={setFreezeReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select freeze reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FREEZE_CODES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setTarget(null)} disabled={isFreezing}>Cancel</Button>
-            <Button variant="destructive" onClick={handleFreezeConfirm} disabled={isFreezing} className="gap-2">
-              {isFreezing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Snowflake className="h-4 w-4" />}
-              Confirm Freeze
+            <Button
+              variant={target?.action === "unfreeze" ? "default" : "destructive"}
+              onClick={handleFreezeConfirm}
+              disabled={isFreezing}
+              className="gap-2"
+            >
+              {isFreezing
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : target?.action === "unfreeze" ? <Sun className="h-4 w-4" /> : <Snowflake className="h-4 w-4" />}
+              {target?.action === "unfreeze" ? "Confirm Unfreeze" : "Confirm Freeze"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };
