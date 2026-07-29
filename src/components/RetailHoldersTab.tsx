@@ -20,6 +20,9 @@ const FREEZE_CODES = [
   { value: "frozen_lanapays_outdated", label: "Out-dated Wallet for LanaPays.Us" },
   { value: "frozen_retail_unallowed", label: "Retail Wallet — un-allowed transactions" },
   { value: "frozen_retail_over_limit", label: "Retail Wallet — over the Limit" },
+  { value: "frozen_own_threatening", label: "OWN — Threatening" },
+  { value: "frozen_own_public_attack", label: "OWN — Public attack" },
+  { value: "frozen_own_no_responsibility", label: "OWN — Failing to accept responsibility" },
 ];
 
 interface Holder {

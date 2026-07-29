@@ -20,6 +20,9 @@ const FREEZE_CODES = [
   { value: "frozen_lanapays_outdated", label: "Out-dated LanaPays.Us" },
   { value: "frozen_retail_unallowed", label: "Retail — un-allowed TX" },
   { value: "frozen_retail_over_limit", label: "Retail — over the Limit" },
+  { value: "frozen_own_threatening", label: "OWN — Threatening" },
+  { value: "frozen_own_public_attack", label: "OWN — Public attack" },
+  { value: "frozen_own_no_responsibility", label: "OWN — Failing to accept responsibility" },
 ];
 
 const FREEZE_LABELS: Record<string, string> = {
@@ -30,6 +33,9 @@ const FREEZE_LABELS: Record<string, string> = {
   frozen_lanapays_outdated: "Out-dated LanaPays.Us",
   frozen_retail_unallowed: "Retail — un-allowed TX",
   frozen_retail_over_limit: "Retail — over the Limit",
+  frozen_own_threatening: "OWN — Threatening",
+  frozen_own_public_attack: "OWN — Public attack",
+  frozen_own_no_responsibility: "OWN — Failing to accept responsibility",
 };
 
 interface FrozenWallet {
