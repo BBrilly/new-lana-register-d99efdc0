@@ -109,13 +109,16 @@ const Lana8WonderHoldersTab = () => {
   const handleFreezeConfirm = async () => {
     if (!target) return;
     const holder = target.holder;
-    const toFreeze =
+    const doFreeze = target.action === "freeze";
+    const ids =
       target.kind === "wallet"
         ? [target.wallet.id]
-        : holder.wallets.filter(w => !w.frozen && w.balance > 0).map(w => w.id);
+        : doFreeze
+          ? holder.wallets.filter(w => !w.frozen && w.balance > 0).map(w => w.id)
+          : holder.wallets.filter(w => w.frozen).map(w => w.id);
 
-    if (toFreeze.length === 0) {
-      toast.info("Nothing to freeze");
+    if (ids.length === 0) {
+      toast.info(doFreeze ? "Nothing to freeze" : "Nothing to unfreeze");
       setTarget(null);
       return;
     }
@@ -123,30 +126,45 @@ const Lana8WonderHoldersTab = () => {
     try {
       const { error } = await supabase.functions.invoke("freeze-wallets", {
         body: {
-          wallet_ids: toFreeze,
-          freeze: true,
-          freeze_reason: freezeReason,
+          wallet_ids: ids,
+          freeze: doFreeze,
+          freeze_reason: doFreeze ? freezeReason : undefined,
           nostr_hex_id: holder.nostrHexId,
         },
       });
       if (error) throw error;
       toast.success(
-        target.kind === "wallet"
-          ? `Froze wallet for ${holder.name}`
-          : `Froze ${toFreeze.length} Lana8Wonder wallet${toFreeze.length === 1 ? "" : "s"} for ${holder.name}`
+        `${doFreeze ? "Froze" : "Unfroze"} ${ids.length} Lana8Wonder wallet${ids.length === 1 ? "" : "s"} for ${holder.name}`
       );
       if (target.kind === "wallet") {
-        setFrozenWalletIds(prev => new Set(prev).add(target.wallet.id));
+        const id = target.wallet.id;
+        if (doFreeze) {
+          setFrozenWalletIds(prev => new Set(prev).add(id));
+          setUnfrozenWalletIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+        } else {
+          setUnfrozenWalletIds(prev => new Set(prev).add(id));
+          setFrozenWalletIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+        }
       } else {
-        setFrozenKeys(prev => new Set(prev).add(holder.key));
+        if (doFreeze) {
+          setFrozenKeys(prev => new Set(prev).add(holder.key));
+          setUnfrozenKeys(prev => { const n = new Set(prev); n.delete(holder.key); return n; });
+          setUnfrozenWalletIds(prev => { const n = new Set(prev); ids.forEach(i => n.delete(i)); return n; });
+        } else {
+          setUnfrozenKeys(prev => new Set(prev).add(holder.key));
+          setFrozenKeys(prev => { const n = new Set(prev); n.delete(holder.key); return n; });
+          setUnfrozenWalletIds(prev => { const n = new Set(prev); ids.forEach(i => n.add(i)); return n; });
+          setFrozenWalletIds(prev => { const n = new Set(prev); ids.forEach(i => n.delete(i)); return n; });
+        }
       }
       setTarget(null);
     } catch (err: any) {
-      toast.error(err.message || "Error freezing wallets");
+      toast.error(err.message || "Error updating wallets");
     } finally {
       setIsFreezing(false);
     }
   };
+
 
   return (
     <div className="space-y-4">
