@@ -365,21 +365,38 @@ const Lana8WonderHoldersTab = () => {
                                                 )}
                                               </TableCell>
                                               <TableCell className="text-right">
-                                                <Button
-                                                  size="sm"
-                                                  variant="destructive"
-                                                  className="gap-1"
-                                                  disabled={isFrozen || !h.nostrHexId}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setTarget({ kind: "wallet", holder: h, wallet: w });
-                                                    setFreezeReason("frozen_too_wild");
-                                                  }}
-                                                >
-                                                  <Snowflake className="h-3.5 w-3.5" />
-                                                  Freeze
-                                                </Button>
+                                                {isFrozen ? (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="gap-1"
+                                                    disabled={!h.nostrHexId}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setTarget({ kind: "wallet", action: "unfreeze", holder: h, wallet: w });
+                                                    }}
+                                                  >
+                                                    <Sun className="h-3.5 w-3.5" />
+                                                    Unfreeze
+                                                  </Button>
+                                                ) : (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    className="gap-1"
+                                                    disabled={!h.nostrHexId}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setTarget({ kind: "wallet", action: "freeze", holder: h, wallet: w });
+                                                      setFreezeReason("frozen_too_wild");
+                                                    }}
+                                                  >
+                                                    <Snowflake className="h-3.5 w-3.5" />
+                                                    Freeze
+                                                  </Button>
+                                                )}
                                               </TableCell>
+
                                             </TableRow>
                                           );
                                         })}
