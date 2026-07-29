@@ -320,7 +320,7 @@ const Lana8WonderHoldersTab = () => {
                                         .slice()
                                         .sort((a, b) => b.balance - a.balance)
                                         .map((w) => {
-                                          const isFrozen = w.frozen || frozenWalletIds.has(w.id);
+                                          const isFrozen = isWalletFrozen(w);
                                           return (
                                             <TableRow key={w.id} className={cn(isFrozen && "bg-sky-50 dark:bg-sky-950/30")}>
                                               <TableCell>
