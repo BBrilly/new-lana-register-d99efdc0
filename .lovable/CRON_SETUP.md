@@ -169,3 +169,24 @@ SELECT cron.schedule(
 | 5 | `sync-profile-data` | `*/10 * * * *` | Every 10 minutes |
 | 6 | `kind-cron-37772-lanaknight-registry` | `*/10 * * * *` | Every 10 minutes |
 | 7 | `sync-system-parameters` | `0 * * * *` | Hourly |
+
+---
+
+## 8. KIND 87057 — OWN Person Freeze / Unfreeze Monitor
+
+**Interval:** Every 10 minutes (`*/10 * * * *`)
+**Purpose:** Reads KIND 87057 facilitator notices from relays, verifies facilitator authority via KIND 87044/37044, stores them in `own_person_freeze_events`, freezes/unfreezes the person's wallets (reason `frozen_own_person`, with SPLIT bounds) and republishes KIND 87010 + KIND 30889.
+
+```sql
+SELECT cron.schedule(
+  'kind-cron-87057-own-person-freeze-monitor',
+  '*/10 * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/kind-cron-87057-own-person-freeze-monitor',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+    body := '{}'::jsonb
+  ) AS request_id;
+  $$
+);
+```
