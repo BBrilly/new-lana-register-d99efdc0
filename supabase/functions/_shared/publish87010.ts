@@ -18,6 +18,7 @@ export function mapReasonToSpec(reason?: string | null): string {
     case "frozen_own_threatening":
     case "frozen_own_public_attack":
     case "frozen_own_no_responsibility":
+    case "frozen_own_person":
       return "frozen_too_wild";
     default:
       return r === "" ? "frozen_l8w" : "frozen_l8w";
