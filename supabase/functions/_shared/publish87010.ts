@@ -64,6 +64,9 @@ export interface Publish87010Entry {
   effective_at?: Date;
   frozen_at?: Date | null; // only for unfrozen
   memo?: string;
+  split?: number | null; // SPLIT round in which the freeze happened
+  until_split?: number | null; // SPLIT round through which the freeze holds
+  reason_details?: string | null; // free-text explanation
 }
 
 /** Fetch balances (in LANA) for a list of addresses via the fetch-wallet-balance edge function. */
