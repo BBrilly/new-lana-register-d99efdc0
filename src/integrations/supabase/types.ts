@@ -299,6 +299,57 @@ export type Database = {
         }
         Relationships: []
       }
+      own_person_freeze_events: {
+        Row: {
+          applied: boolean
+          content: string | null
+          created_at: string
+          effective_at: string
+          event_created_at: string
+          event_id: string
+          facilitator_pubkey: string
+          frozen_at: string | null
+          frozen_person_hex: string
+          id: string
+          process_event_id: string
+          split_at_event: number | null
+          status: string
+          until_split: number | null
+        }
+        Insert: {
+          applied?: boolean
+          content?: string | null
+          created_at?: string
+          effective_at: string
+          event_created_at: string
+          event_id: string
+          facilitator_pubkey: string
+          frozen_at?: string | null
+          frozen_person_hex: string
+          id?: string
+          process_event_id: string
+          split_at_event?: number | null
+          status: string
+          until_split?: number | null
+        }
+        Update: {
+          applied?: boolean
+          content?: string | null
+          created_at?: string
+          effective_at?: string
+          event_created_at?: string
+          event_id?: string
+          facilitator_pubkey?: string
+          frozen_at?: string | null
+          frozen_person_hex?: string
+          id?: string
+          process_event_id?: string
+          split_at_event?: number | null
+          status?: string
+          until_split?: number | null
+        }
+        Relationships: []
+      }
       registered_lana_events: {
         Row: {
           amount: number
@@ -620,7 +671,10 @@ export type Database = {
           nostr_hex_id: string
           published_at: string | null
           reason: string
+          reason_details: string
+          split: number | null
           status: string
+          until_split: number | null
           wallet_address: string
           wallet_uuid: string | null
         }
@@ -634,7 +688,10 @@ export type Database = {
           nostr_hex_id: string
           published_at?: string | null
           reason?: string
+          reason_details?: string
+          split?: number | null
           status: string
+          until_split?: number | null
           wallet_address: string
           wallet_uuid?: string | null
         }
@@ -648,7 +705,10 @@ export type Database = {
           nostr_hex_id?: string
           published_at?: string | null
           reason?: string
+          reason_details?: string
+          split?: number | null
           status?: string
+          until_split?: number | null
           wallet_address?: string
           wallet_uuid?: string | null
         }
@@ -680,6 +740,9 @@ export type Database = {
           amount_unregistered_lanoshi: number | null
           created_at: string
           freeze_reason: string
+          freeze_reason_details: string
+          freeze_split: number | null
+          freeze_until_split: number | null
           frozen: boolean
           id: string
           main_wallet_id: string
@@ -694,6 +757,9 @@ export type Database = {
           amount_unregistered_lanoshi?: number | null
           created_at?: string
           freeze_reason?: string
+          freeze_reason_details?: string
+          freeze_split?: number | null
+          freeze_until_split?: number | null
           frozen?: boolean
           id?: string
           main_wallet_id: string
@@ -708,6 +774,9 @@ export type Database = {
           amount_unregistered_lanoshi?: number | null
           created_at?: string
           freeze_reason?: string
+          freeze_reason_details?: string
+          freeze_split?: number | null
+          freeze_until_split?: number | null
           frozen?: boolean
           id?: string
           main_wallet_id?: string
