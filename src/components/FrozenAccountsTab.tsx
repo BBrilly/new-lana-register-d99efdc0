@@ -252,7 +252,8 @@ const FrozenAccountsTab = () => {
             <CardTitle>Frozen Accounts</CardTitle>
           </div>
           <CardDescription>
-            All wallets currently marked as frozen ({frozenWallets?.length ?? 0} total). Click a row to manage.
+            Frozen wallets grouped by user ({groups.length} users · {frozenWallets?.length ?? 0} wallets).
+            Expand a user to manage single wallets, or unfreeze them all at once.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -271,82 +272,143 @@ const FrozenAccountsTab = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10"></TableHead>
                     <TableHead>#</TableHead>
                     <TableHead>Owner</TableHead>
                     <TableHead>Nostr Hex ID</TableHead>
-                    <TableHead>Wallet Type</TableHead>
-                    <TableHead>Wallet Address</TableHead>
+                    <TableHead className="text-center">Frozen Wallets</TableHead>
                     <TableHead className="text-right">Balance (LANA)</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Frozen At</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {frozenWallets.map((wallet, index) => (
-                    <TableRow
-                      key={wallet.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleRowClick(wallet)}
-                    >
-                      <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-medium">
-                        {wallet.owner_display_name || wallet.owner_name || "—"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {wallet.nostr_hex_id ? (
-                          <button
-                            type="button"
-                            onClick={(e) => copyHex(e, wallet.nostr_hex_id!)}
-                            className="inline-flex items-center gap-1 hover:text-primary"
-                            title={wallet.nostr_hex_id}
-                          >
-                            <span>{wallet.nostr_hex_id.slice(0, 8)}…{wallet.nostr_hex_id.slice(-6)}</span>
-                            {copiedHex === wallet.nostr_hex_id ? (
-                              <Check className="h-3 w-3 text-success" />
-                            ) : (
-                              <Copy className="h-3 w-3 opacity-60" />
-                            )}
-                          </button>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{wallet.wallet_type}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {wallet.wallet_id
-                          ? `${wallet.wallet_id.slice(0, 8)}...${wallet.wallet_id.slice(-6)}`
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">
-                        {balancesLoading && !balanceMap ? (
-                          <span className="text-muted-foreground">…</span>
-                        ) : wallet.wallet_id && balanceMap?.has(wallet.wallet_id) ? (
-                          balanceMap.get(wallet.wallet_id)!.toFixed(2)
-                        ) : (
-                          "—"
+                  {groups.map((group, index) => {
+                    const isOpen = expanded.has(group.key);
+                    return (
+                      <Fragment key={group.key}>
+                        <TableRow
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => toggleGroup(group.key)}
+                        >
+                          <TableCell>
+                            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                          <TableCell className="font-medium">{group.name}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {group.nostrHexId ? (
+                              <button
+                                type="button"
+                                onClick={(e) => copyHex(e, group.nostrHexId!)}
+                                className="inline-flex items-center gap-1 hover:text-primary"
+                                title={group.nostrHexId}
+                              >
+                                <span>{group.nostrHexId.slice(0, 8)}…{group.nostrHexId.slice(-6)}</span>
+                                {copiedHex === group.nostrHexId ? (
+                                  <Check className="h-3 w-3 text-success" />
+                                ) : (
+                                  <Copy className="h-3 w-3 opacity-60" />
+                                )}
+                              </button>
+                            ) : "—"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="destructive" className="gap-1">
+                              <Lock className="h-3 w-3" />
+                              {group.wallets.length}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">
+                            {balancesLoading && !balanceMap
+                              ? "…"
+                              : groupBalance(group.wallets).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              disabled={bulkKey === group.key}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleBulkUnfreeze(group);
+                              }}
+                            >
+                              {bulkKey === group.key ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Unlock className="h-3 w-3" />
+                              )}
+                              Unfreeze all
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {isOpen && (
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={7} className="p-0">
+                              <div className="p-4">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Wallet Type</TableHead>
+                                      <TableHead>Wallet Address</TableHead>
+                                      <TableHead className="text-right">Balance (LANA)</TableHead>
+                                      <TableHead>Reason</TableHead>
+                                      <TableHead>Frozen At</TableHead>
+                                      <TableHead className="text-right">Manage</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {group.wallets.map((wallet) => (
+                                      <TableRow key={wallet.id}>
+                                        <TableCell>
+                                          <Badge variant="outline">{wallet.wallet_type}</Badge>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                          {wallet.wallet_id
+                                            ? `${wallet.wallet_id.slice(0, 8)}...${wallet.wallet_id.slice(-6)}`
+                                            : "—"}
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold tabular-nums">
+                                          {balancesLoading && !balanceMap ? (
+                                            <span className="text-muted-foreground">…</span>
+                                          ) : wallet.wallet_id && balanceMap?.has(wallet.wallet_id) ? (
+                                            balanceMap.get(wallet.wallet_id)!.toFixed(2)
+                                          ) : (
+                                            "—"
+                                          )}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge variant="secondary" className="text-xs">
+                                            {FREEZE_LABELS[wallet.freeze_reason] || wallet.freeze_reason || "Unknown"}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                          {wallet.frozen_at ? new Date(wallet.frozen_at).toLocaleString() : "—"}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleRowClick(wallet)}
+                                          >
+                                            Manage
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {FREEZE_LABELS[wallet.freeze_reason] || wallet.freeze_reason || "Unknown"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {wallet.frozen_at
-                          ? new Date(wallet.frozen_at).toLocaleString()
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="destructive" className="gap-1">
-                          <Lock className="h-3 w-3" />
-                          Frozen
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      </Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
+
             </div>
           )}
         </CardContent>
