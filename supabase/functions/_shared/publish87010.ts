@@ -188,12 +188,17 @@ export async function publish87010(
         if (registrarPubkey) {
           tags.push(["a", `30889:${registrarPubkey}:${e.nostr_hex_id}`]);
         }
+        if (e.split !== undefined && e.split !== null) tags.push(["split", String(e.split)]);
+        if (e.until_split !== undefined && e.until_split !== null) {
+          tags.push(["until_split", String(e.until_split)]);
+        }
         if (e.memo) tags.push(["memo", e.memo]);
 
+        const details = (e.reason_details || "").trim();
         const content =
           e.status === "frozen"
-            ? `Wallet frozen: ${specReason}.`
-            : `Wallet unfrozen: ${specReason} lifted.`;
+            ? `Wallet frozen: ${specReason}.${details ? ` ${details}` : ""}`
+            : `Wallet unfrozen: ${specReason} lifted.${details ? ` ${details}` : ""}`;
 
         const event = sign(87010, tags, content, privateKeyHex);
         const accepted = await publishWithTimeout(pool, relays, event, cid);
@@ -217,6 +222,9 @@ export async function publish87010(
       frozen_at: e.status === "unfrozen" && e.frozen_at ? e.frozen_at.toISOString() : null,
       nostr_event_id: eventId,
       published_at: eventId ? new Date().toISOString() : null,
+      split: e.split ?? null,
+      until_split: e.until_split ?? null,
+      reason_details: e.reason_details || "",
     });
   }
 
