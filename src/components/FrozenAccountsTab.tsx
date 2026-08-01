@@ -50,6 +50,8 @@ interface FrozenWallet {
   nostr_hex_id: string | null;
   main_wallet_id: string;
   frozen_at: string | null;
+  freeze_split: number | null;
+  freeze_until_split: number | null;
 }
 
 const FrozenAccountsTab = () => {
