@@ -57,5 +57,8 @@ verify_jwt = false
 [functions.kind-cron-87055-own-exit-monitor]
 verify_jwt = false
 
+[functions.kind-cron-87057-own-person-freeze-monitor]
+verify_jwt = false
+
 
 
