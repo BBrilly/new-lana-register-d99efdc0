@@ -18,6 +18,7 @@ export function mapReasonToSpec(reason?: string | null): string {
     case "frozen_own_threatening":
     case "frozen_own_public_attack":
     case "frozen_own_no_responsibility":
+    case "frozen_own_person":
       return "frozen_too_wild";
     default:
       return r === "" ? "frozen_l8w" : "frozen_l8w";
@@ -64,6 +65,9 @@ export interface Publish87010Entry {
   effective_at?: Date;
   frozen_at?: Date | null; // only for unfrozen
   memo?: string;
+  split?: number | null; // SPLIT round in which the freeze happened
+  until_split?: number | null; // SPLIT round through which the freeze holds
+  reason_details?: string | null; // free-text explanation
 }
 
 /** Fetch balances (in LANA) for a list of addresses via the fetch-wallet-balance edge function. */
@@ -185,12 +189,17 @@ export async function publish87010(
         if (registrarPubkey) {
           tags.push(["a", `30889:${registrarPubkey}:${e.nostr_hex_id}`]);
         }
+        if (e.split !== undefined && e.split !== null) tags.push(["split", String(e.split)]);
+        if (e.until_split !== undefined && e.until_split !== null) {
+          tags.push(["until_split", String(e.until_split)]);
+        }
         if (e.memo) tags.push(["memo", e.memo]);
 
+        const details = (e.reason_details || "").trim();
         const content =
           e.status === "frozen"
-            ? `Wallet frozen: ${specReason}.`
-            : `Wallet unfrozen: ${specReason} lifted.`;
+            ? `Wallet frozen: ${specReason}.${details ? ` ${details}` : ""}`
+            : `Wallet unfrozen: ${specReason} lifted.${details ? ` ${details}` : ""}`;
 
         const event = sign(87010, tags, content, privateKeyHex);
         const accepted = await publishWithTimeout(pool, relays, event, cid);
@@ -214,6 +223,9 @@ export async function publish87010(
       frozen_at: e.status === "unfrozen" && e.frozen_at ? e.frozen_at.toISOString() : null,
       nostr_event_id: eventId,
       published_at: eventId ? new Date().toISOString() : null,
+      split: e.split ?? null,
+      until_split: e.until_split ?? null,
+      reason_details: e.reason_details || "",
     });
   }
 
