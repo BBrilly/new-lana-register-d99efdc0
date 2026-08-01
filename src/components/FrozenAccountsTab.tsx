@@ -50,6 +50,8 @@ interface FrozenWallet {
   nostr_hex_id: string | null;
   main_wallet_id: string;
   frozen_at: string | null;
+  freeze_split: number | null;
+  freeze_until_split: number | null;
 }
 
 const FrozenAccountsTab = () => {
@@ -83,7 +85,7 @@ const FrozenAccountsTab = () => {
       while (hasMore) {
         const { data, error } = await supabase
           .from("wallets")
-          .select(`id, wallet_id, wallet_type, frozen, freeze_reason, main_wallet_id, updated_at, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
+          .select(`id, wallet_id, wallet_type, frozen, freeze_reason, main_wallet_id, updated_at, freeze_split, freeze_until_split, main_wallet:main_wallets(name, display_name, nostr_hex_id)`)
           .eq("frozen", true)
           .range(offset, offset + PAGE_SIZE - 1);
 
@@ -122,6 +124,8 @@ const FrozenAccountsTab = () => {
         nostr_hex_id: (w.main_wallet as any)?.nostr_hex_id || null,
         main_wallet_id: w.main_wallet_id,
         frozen_at: freezeDates.get(w.id) || w.updated_at || null,
+        freeze_split: w.freeze_split ?? null,
+        freeze_until_split: w.freeze_until_split ?? null,
       }));
     },
 
@@ -355,6 +359,7 @@ const FrozenAccountsTab = () => {
                                       <TableHead className="text-right">Balance (LANA)</TableHead>
                                       <TableHead>Reason</TableHead>
                                       <TableHead>Frozen At</TableHead>
+                                      <TableHead>Until SPLIT</TableHead>
                                       <TableHead className="text-right">Manage</TableHead>
                                     </TableRow>
                                   </TableHeader>
@@ -385,6 +390,18 @@ const FrozenAccountsTab = () => {
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                           {wallet.frozen_at ? new Date(wallet.frozen_at).toLocaleString() : "—"}
+                                        </TableCell>
+                                        <TableCell className="text-xs whitespace-nowrap">
+                                          {wallet.freeze_until_split != null ? (
+                                            <Badge variant="outline" className="text-xs">
+                                              until SPLIT {wallet.freeze_until_split}
+                                            </Badge>
+                                          ) : (
+                                            <span className="text-muted-foreground">—</span>
+                                          )}
+                                          {wallet.freeze_split != null && (
+                                            <span className="ml-2 text-muted-foreground">(from {wallet.freeze_split})</span>
+                                          )}
                                         </TableCell>
                                         <TableCell className="text-right">
                                           <Button
