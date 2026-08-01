@@ -130,6 +130,64 @@ const FrozenAccountsTab = () => {
   const addressList = (frozenWallets || []).map((w) => w.wallet_id);
   const { data: balanceMap, isLoading: balancesLoading } = useAddressBalances(addressList, "frozen-accounts");
 
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [bulkKey, setBulkKey] = useState<string | null>(null);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      name: string;
+      nostrHexId: string | null;
+      wallets: FrozenWallet[];
+    }>();
+    for (const w of frozenWallets || []) {
+      const key = w.main_wallet_id || w.nostr_hex_id || "unknown";
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: w.owner_display_name || w.owner_name || "—",
+          nostrHexId: w.nostr_hex_id,
+          wallets: [],
+        });
+      }
+      map.get(key)!.wallets.push(w);
+    }
+    return Array.from(map.values()).sort((a, b) => b.wallets.length - a.wallets.length);
+  }, [frozenWallets]);
+
+  const toggleGroup = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const groupBalance = (wallets: FrozenWallet[]) =>
+    wallets.reduce((s, w) => s + (w.wallet_id ? balanceMap?.get(w.wallet_id) ?? 0 : 0), 0);
+
+  const handleBulkUnfreeze = async (group: { key: string; nostrHexId: string | null; wallets: FrozenWallet[]; name: string }) => {
+    setBulkKey(group.key);
+    try {
+      const { error } = await supabase.functions.invoke("freeze-wallets", {
+        body: {
+          wallet_ids: group.wallets.map((w) => w.id),
+          freeze: false,
+          nostr_hex_id: group.nostrHexId,
+        },
+      });
+      if (error) throw error;
+      toast.success(`Unfroze ${group.wallets.length} wallet(s) for ${group.name}`);
+      queryClient.invalidateQueries({ queryKey: ["frozen-wallets-admin"] });
+    } catch (err) {
+      console.error("Bulk unfreeze error:", err);
+      toast.error("Failed to unfreeze wallets");
+    } finally {
+      setBulkKey(null);
+    }
+  };
+
+
   const handleRowClick = (wallet: FrozenWallet) => {
     setSelectedWallet(wallet);
     setNewReason(wallet.freeze_reason || "frozen_l8w");
