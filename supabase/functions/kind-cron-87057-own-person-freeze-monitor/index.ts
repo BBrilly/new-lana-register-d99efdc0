@@ -69,18 +69,26 @@ async function resolveFacilitators(
       "#d": [`own:${caseRoot}`],
     });
 
-    // Only records authored by the case-root author, or by someone the chain
-    // of authority already handed over to.
+    // Accepted records: authored by the case-root author, by someone the chain
+    // of authority already handed over to, or by a facilitator of a record that
+    // names the case-root author as initiator (self-published roster).
     const authorized = new Set<string>([rootAuthor]);
     const sorted = [...records].sort((a: any, b: any) => a.created_at - b.created_at);
     for (const rec of sorted) {
-      if (!authorized.has((rec.pubkey || "").toLowerCase())) continue;
+      const recAuthor = (rec.pubkey || "").toLowerCase();
       const facilitators: string[] = [];
+      let initiator: string | null = null;
       for (const t of rec.tags || []) {
         if (t[0] !== "p" || !isHex64(t[1])) continue;
         const marker = (t[3] || t[2] || "").toLowerCase();
         if (marker === "facilitator") facilitators.push(t[1].toLowerCase());
+        if (marker === "initiator") initiator = t[1].toLowerCase();
       }
+
+      const selfRoster =
+        initiator === rootAuthor && facilitators.includes(recAuthor);
+      if (!authorized.has(recAuthor) && !selfRoster) continue;
+
       if (facilitators.length > 0) {
         allow.clear();
         for (const f of facilitators) {
@@ -89,6 +97,7 @@ async function resolveFacilitators(
         }
       }
     }
+
   } catch (e) {
     console.error("facilitator resolution failed:", (e as Error).message);
   }
