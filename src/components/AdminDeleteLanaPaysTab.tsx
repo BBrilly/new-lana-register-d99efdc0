@@ -204,59 +204,66 @@ const AdminDeleteLanaPaysTab = () => {
         </CardContent>
       </Card>
 
-      <AlertDialog open={confirmStep === 1} onOpenChange={(o) => { if (!o) closeConfirm(); }}>
+      <AlertDialog open={confirmStep !== 0} onOpenChange={(o) => { if (!o) closeConfirm(); }}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete LanaPays.Us wallet?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>
-                  You are about to permanently delete wallet{" "}
-                  <span className="font-mono text-xs">({target?.wallet_id})</span> belonging to{" "}
-                  <strong>{target?.owner_display_name || target?.owner_name || "—"}</strong>.
-                </p>
-                <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
-                  <p className="text-foreground">
-                    The wallet will be archived in <strong>deleted_wallets</strong> and a fresh KIND 30889
-                    will be published to relays without this wallet.
-                  </p>
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeConfirm}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setConfirmStep(2)}>Yes, continue</AlertDialogAction>
-          </AlertDialogFooter>
+          {confirmStep === 1 ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete LanaPays.Us wallet?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    <p>
+                      You are about to permanently delete wallet{" "}
+                      <span className="font-mono text-xs">({target?.wallet_id})</span> belonging to{" "}
+                      <strong>{target?.owner_display_name || target?.owner_name || "—"}</strong>.
+                    </p>
+                    <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+                      <p className="text-foreground">
+                        The wallet will be archived in <strong>deleted_wallets</strong> and a fresh KIND 30889
+                        will be published to relays without this wallet.
+                      </p>
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={closeConfirm}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => { e.preventDefault(); setConfirmStep(2); }}
+                >
+                  Yes, continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive">Final confirmation</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action is <strong>irreversible</strong>. Confirm admin deletion of wallet{" "}
+                  <span className="font-mono text-xs">{target?.wallet_id}</span>.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting} onClick={closeConfirm}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={isDeleting}
+                  onClick={(e) => { e.preventDefault(); performDelete(); }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {isDeleting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
+                  ) : (
+                    "Yes, delete"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmStep === 2} onOpenChange={(o) => { if (!o && !isDeleting) closeConfirm(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Final confirmation</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action is <strong>irreversible</strong>. Confirm admin deletion of wallet{" "}
-              <span className="font-mono text-xs">{target?.wallet_id}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} onClick={closeConfirm}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeleting}
-              onClick={performDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</>
-              ) : (
-                "Yes, delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };
