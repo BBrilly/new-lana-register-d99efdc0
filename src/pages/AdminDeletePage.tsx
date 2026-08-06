@@ -1,10 +1,12 @@
 import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, ArrowLeft, Wallet as WalletIcon, Snowflake } from "lucide-react";
+import { Trash2, ArrowLeft, Wallet as WalletIcon, Snowflake, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import AdminDeleteMainWalletTab from "@/components/AdminDeleteMainWalletTab";
 import AdminDeleteFrozenTab from "@/components/AdminDeleteFrozenTab";
+import AdminDeleteLanaPaysTab from "@/components/AdminDeleteLanaPaysTab";
+
 
 const AdminDeletePage = () => {
   return (
@@ -38,6 +40,10 @@ const AdminDeletePage = () => {
               <Snowflake className="h-4 w-4" />
               Delete Frozen
             </TabsTrigger>
+            <TabsTrigger value="delete-lanapays" className="flex items-center gap-1">
+              <CreditCard className="h-4 w-4" />
+              LanaPays.Us
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="delete-main" className="space-y-4">
@@ -47,6 +53,11 @@ const AdminDeletePage = () => {
           <TabsContent value="delete-frozen" className="space-y-4">
             <AdminDeleteFrozenTab />
           </TabsContent>
+
+          <TabsContent value="delete-lanapays" className="space-y-4">
+            <AdminDeleteLanaPaysTab />
+          </TabsContent>
+
         </Tabs>
       </div>
     </Layout>
