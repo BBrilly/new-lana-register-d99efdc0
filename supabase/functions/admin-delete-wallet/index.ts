@@ -102,16 +102,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Only allow deleting frozen wallets
-    if (!wallet.frozen) {
-      return new Response(JSON.stringify({ success: false, error: "Only frozen wallets can be deleted via this endpoint" }), {
+    const walletTypeLower = (wallet.wallet_type || "").toLowerCase();
+
+    // Allow deleting frozen wallets, or outdated LanaPays.Us wallets
+    if (!wallet.frozen && walletTypeLower !== "lanapays.us") {
+      return new Response(JSON.stringify({ success: false, error: "Only frozen or LanaPays.Us wallets can be deleted via this endpoint" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Block Main wallet deletion
-    const walletTypeLower = (wallet.wallet_type || "").toLowerCase();
     if (PROTECTED_MAIN_TYPES.some((t) => walletTypeLower === t)) {
       return new Response(JSON.stringify({ success: false, error: "Cannot delete Main Wallet" }), {
         status: 400,
