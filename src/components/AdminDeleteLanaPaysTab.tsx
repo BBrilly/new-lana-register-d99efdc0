@@ -102,8 +102,9 @@ const AdminDeleteLanaPaysTab = () => {
     if (!target) return;
     setIsDeleting(true);
     try {
+      const authEvent = createAdminAuthEvent("admin-delete-wallet", target.id);
       const { data: res, error } = await supabase.functions.invoke("admin-delete-wallet", {
-        body: { wallet_uuid: target.id },
+        body: { wallet_uuid: target.id, admin_auth_event: authEvent },
       });
       if (error) throw error;
       if (!res?.success) throw new Error(res?.error || "Unknown error");
