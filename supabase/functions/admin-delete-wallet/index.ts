@@ -162,8 +162,8 @@ Deno.serve(async (req) => {
       nostr_hex_id: ownerHex || "admin_deleted",
       main_wallet_id: wallet.main_wallet_id,
       reason: wallet.frozen
-        ? `admin_deleted_frozen (${wallet.freeze_reason || "frozen"}) | balance: ${balanceAtDeletion} | admin_user: ${userData.user.id}`
-        : `admin_deleted_lanapays_outdated (split_created: ${wallet.split_created ?? "none"}) | balance: ${balanceAtDeletion} | admin_user: ${userData.user.id}`,
+        ? `admin_deleted_frozen (${wallet.freeze_reason || "frozen"}) | balance: ${balanceAtDeletion} | admin_user: ${userId}`
+        : `admin_deleted_lanapays_outdated (split_created: ${wallet.split_created ?? "none"}) | balance: ${balanceAtDeletion} | admin_user: ${userId}`,
     });
 
     // Delete
