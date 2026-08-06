@@ -61,15 +61,26 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData?.user) {
+    const token = authHeader.replace("Bearer ", "");
+    let userId: string | null = null;
+
+    const { data: claimsData } = await userClient.auth.getClaims(token);
+    if (claimsData?.claims?.sub) {
+      userId = claimsData.claims.sub as string;
+    } else {
+      const { data: userData } = await userClient.auth.getUser(token);
+      userId = userData?.user?.id ?? null;
+    }
+
+    if (!userId) {
       return new Response(JSON.stringify({ success: false, error: "Invalid auth" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: isAdmin, error: adminError } = await userClient.rpc("is_admin", { _user_id: userData.user.id });
+    const adminClient = createClient(supabaseUrl, serviceKey);
+    const { data: isAdmin, error: adminError } = await adminClient.rpc("is_admin", { _user_id: userId });
     if (adminError || !isAdmin) {
       return new Response(JSON.stringify({ success: false, error: "Admin privileges required" }), {
         status: 403,
