@@ -100,12 +100,6 @@ Deno.serve(async (req) => {
       });
     }
     console.log(`[${correlationId}] ✓ Admin authorized: ${adminHex.substring(0, 12)}…`);
-    if (!wallet_uuid) {
-      return new Response(JSON.stringify({ success: false, error: "wallet_uuid required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
