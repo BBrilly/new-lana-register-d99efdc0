@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { createAdminAuthEvent } from "@/utils/adminAuthEvent";
 import {
   AlertDialog,
   AlertDialogAction,
