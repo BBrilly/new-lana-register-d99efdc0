@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SimplePool, finalizeEvent } from "https://esm.sh/nostr-tools@2.7.0";
+import { SimplePool, finalizeEvent, verifyEvent } from "https://esm.sh/nostr-tools@2.7.0";
 import { decode as nip19decode } from "https://esm.sh/nostr-tools@2.7.0/nip19";
 
 const corsHeaders = {
@@ -46,56 +46,60 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    // Validate admin via user's JWT
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: "Missing Authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const token = authHeader.replace("Bearer ", "");
-    let userId: string | null = null;
-
-    const { data: claimsData } = await userClient.auth.getClaims(token);
-    if (claimsData?.claims?.sub) {
-      userId = claimsData.claims.sub as string;
-    } else {
-      const { data: userData } = await userClient.auth.getUser(token);
-      userId = userData?.user?.id ?? null;
-    }
-
-    if (!userId) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid auth" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceKey);
-    const { data: isAdmin, error: adminError } = await adminClient.rpc("is_admin", { _user_id: userId });
-    if (adminError || !isAdmin) {
-      return new Response(JSON.stringify({ success: false, error: "Admin privileges required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const body = await req.json();
-    const { wallet_uuid } = body;
+    const { wallet_uuid, admin_auth_event } = body;
     if (!wallet_uuid) {
       return new Response(JSON.stringify({ success: false, error: "wallet_uuid required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Validate admin via signed Nostr event (kind 27235)
+    const hasTag = (event: any, name: string, value: string) =>
+      Array.isArray(event.tags) &&
+      event.tags.some((t: string[]) => t[0] === name && (t[1] || "").toLowerCase() === value.toLowerCase());
+
+    if (!admin_auth_event || typeof admin_auth_event !== "object") {
+      return new Response(JSON.stringify({ success: false, error: "Missing admin authorization event" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!verifyEvent(admin_auth_event) || admin_auth_event.kind !== 27235) {
+      return new Response(JSON.stringify({ success: false, error: "Invalid admin authorization signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (Math.abs(Math.floor(Date.now() / 1000) - (admin_auth_event.created_at || 0)) > 300) {
+      return new Response(JSON.stringify({ success: false, error: "Admin authorization event expired" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!hasTag(admin_auth_event, "action", "admin-delete-wallet") || !hasTag(admin_auth_event, "target", wallet_uuid)) {
+      return new Response(JSON.stringify({ success: false, error: "Admin authorization event does not match request" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const adminHex = String(admin_auth_event.pubkey || "").toLowerCase();
+    const adminClient = createClient(supabaseUrl, serviceKey);
+    const { data: adminRow, error: adminError } = await adminClient
+      .from("admin_users")
+      .select("nostr_hex_id")
+      .eq("nostr_hex_id", adminHex)
+      .maybeSingle();
+    if (adminError || !adminRow) {
+      return new Response(JSON.stringify({ success: false, error: "Admin privileges required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    console.log(`[${correlationId}] ✓ Admin authorized: ${adminHex.substring(0, 12)}…`);
 
     const supabase = createClient(supabaseUrl, serviceKey);
 

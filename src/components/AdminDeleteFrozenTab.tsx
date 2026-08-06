@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { createAdminAuthEvent } from "@/utils/adminAuthEvent";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,8 +106,9 @@ const AdminDeleteFrozenTab = () => {
     if (!target) return;
     setIsDeleting(true);
     try {
+      const authEvent = createAdminAuthEvent("admin-delete-wallet", target.id);
       const { data, error } = await supabase.functions.invoke("admin-delete-wallet", {
-        body: { wallet_uuid: target.id },
+        body: { wallet_uuid: target.id, admin_auth_event: authEvent },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Unknown error");
