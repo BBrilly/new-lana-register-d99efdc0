@@ -105,8 +105,9 @@ const AdminDeleteFrozenTab = () => {
     if (!target) return;
     setIsDeleting(true);
     try {
+      const authEvent = createAdminAuthEvent("admin-delete-wallet", target.id);
       const { data, error } = await supabase.functions.invoke("admin-delete-wallet", {
-        body: { wallet_uuid: target.id },
+        body: { wallet_uuid: target.id, admin_auth_event: authEvent },
       });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Unknown error");
