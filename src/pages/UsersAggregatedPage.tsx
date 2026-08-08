@@ -92,6 +92,34 @@ const UsersAggregatedPage = () => {
     };
   }, [groups, lanaLimits, fxRates]);
 
+  // Payable = excess over limit AFTER subtracting frozen wallet balances
+  const payable = useMemo(() => {
+    if (!lanaLimits || !fxRates) return null;
+    const frozenTotal = groups.reduce(
+      (s, g) => s + g.wallets.reduce((ws, w) => ws + (w.frozen ? w.balance : 0), 0),
+      0,
+    );
+    const calc = (limit: number) =>
+      groups.reduce((s, g) => {
+        const liquid = g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0);
+        return s + Math.max(0, liquid - limit);
+      }, 0);
+    const eur = calc(lanaLimits.EUR);
+    const gbp = calc(lanaLimits.GBP);
+    const usd = calc(lanaLimits.USD);
+    return {
+      frozenTotal,
+      frozenFiat: { EUR: frozenTotal * fxRates.EUR, GBP: frozenTotal * fxRates.GBP, USD: frozenTotal * fxRates.USD },
+      lana: { EUR: eur, GBP: gbp, USD: usd },
+      fiat: { EUR: eur * fxRates.EUR, GBP: gbp * fxRates.GBP, USD: usd * fxRates.USD },
+      usersOver: {
+        EUR: groups.filter(g => g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0) > lanaLimits.EUR).length,
+        GBP: groups.filter(g => g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0) > lanaLimits.GBP).length,
+        USD: groups.filter(g => g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0) > lanaLimits.USD).length,
+      },
+    };
+  }, [groups, lanaLimits, fxRates]);
+
 
   const toggle = (key: string) => {
     setExpanded(prev => {
