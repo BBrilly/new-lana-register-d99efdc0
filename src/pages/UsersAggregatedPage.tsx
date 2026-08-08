@@ -92,6 +92,34 @@ const UsersAggregatedPage = () => {
     };
   }, [groups, lanaLimits, fxRates]);
 
+  // Payable = excess over limit AFTER subtracting frozen wallet balances
+  const payable = useMemo(() => {
+    if (!lanaLimits || !fxRates) return null;
+    const frozenTotal = groups.reduce(
+      (s, g) => s + g.wallets.reduce((ws, w) => ws + (w.frozen ? w.balance : 0), 0),
+      0,
+    );
+    const calc = (limit: number) =>
+      groups.reduce((s, g) => {
+        const liquid = g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0);
+        return s + Math.max(0, liquid - limit);
+      }, 0);
+    const eur = calc(lanaLimits.EUR);
+    const gbp = calc(lanaLimits.GBP);
+    const usd = calc(lanaLimits.USD);
+    return {
+      frozenTotal,
+      frozenFiat: { EUR: frozenTotal * fxRates.EUR, GBP: frozenTotal * fxRates.GBP, USD: frozenTotal * fxRates.USD },
+      lana: { EUR: eur, GBP: gbp, USD: usd },
+      fiat: { EUR: eur * fxRates.EUR, GBP: gbp * fxRates.GBP, USD: usd * fxRates.USD },
+      usersOver: {
+        EUR: groups.filter(g => g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0) > lanaLimits.EUR).length,
+        GBP: groups.filter(g => g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0) > lanaLimits.GBP).length,
+        USD: groups.filter(g => g.wallets.reduce((ws, w) => ws + (w.frozen ? 0 : w.balance), 0) > lanaLimits.USD).length,
+      },
+    };
+  }, [groups, lanaLimits, fxRates]);
+
 
   const toggle = (key: string) => {
     setExpanded(prev => {
@@ -204,6 +232,35 @@ const UsersAggregatedPage = () => {
               </div>
             </div>
           )}
+
+          {payable && (
+            <div className="mb-6 rounded-lg border p-4 bg-emerald-50/50 dark:bg-emerald-900/15">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Snowflake className="h-4 w-4 text-sky-500" /> Payable excess — frozen balances excluded
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Frozen wallets subtracted: {payable.frozenTotal.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
+                {" "}(≈ {payable.frozenFiat.EUR.toLocaleString("en-US", { style: "currency", currency: "EUR" })})
+              </div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(["EUR", "GBP", "USD"] as const).map((cur) => (
+                  <div key={cur} className="rounded-md border bg-background/60 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      {cur} limit · {payable.usersOver[cur]} users over (unfrozen only)
+                    </div>
+                    <div className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                      {payable.lana[cur].toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} LANA
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      ≈ {payable.fiat[cur].toLocaleString("en-US", { style: "currency", currency: cur })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+
 
 
           {isLoading ? (
